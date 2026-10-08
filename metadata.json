@@ -1,0 +1,6 @@
+{
+  "name": "CyberArena: Neon Battle",
+  "description": "Multiplayer real-time top-down cyber arena shooter with customizable rooms, live PvP combat, and sleek neon aesthetics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

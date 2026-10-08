@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>CyberArena: Neon Battle</title>
+    <script>
+      // Gracefully ignore Vite HMR WebSocket connection notices in preview environment (HMR is disabled in AI Studio)
+      (function() {
+        const origConsoleError = console.error;
+        console.error = function(...args) {
+          const first = typeof args[0] === 'string' ? args[0] : '';
+          if (first.includes('[vite]') || first.includes('WebSocket closed without opened') || first.includes('WebSocket connection error')) {
+            return;
+          }
+          origConsoleError.apply(console, args);
+        };
+        window.addEventListener('error', function(event) {
+          if (
+            (event.message && (event.message.includes('WebSocket closed without opened') || event.message.includes('[vite]'))) ||
+            (event.filename && event.filename.includes('@vite/client'))
+          ) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+          }
+        }, true);
+        window.addEventListener('unhandledrejection', function(event) {
+          const reasonMsg = (event.reason?.message || event.reason?.stack || String(event.reason || ''));
+          if (
+            reasonMsg.includes('WebSocket closed without opened') ||
+            reasonMsg.includes('[vite]') ||
+            reasonMsg.includes('createWebSocketModuleRunnerTransport')
+          ) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+          }
+        }, true);
+      })();
+    </script>
+    <meta name="description" content="Multiplayer real-time top-down cyber arena shooter with customizable rooms, live PvP combat, and sleek neon aesthetics." />
+    <meta name="theme-color" content="#030712" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="CyberArena" />
+    <meta property="og:title" content="CyberArena: Neon Battle" />
+    <meta property="og:description" content="Multiplayer real-time top-down cyber arena shooter with customizable rooms, live PvP combat, and sleek neon aesthetics." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/pwa-192x192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-slate-950 text-slate-100 antialiased overflow-hidden select-none">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
