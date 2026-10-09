@@ -265,6 +265,12 @@ export const LobbyRoom: React.FC<LobbyRoomProps> = ({
                         <span className="font-orbitron font-bold text-sm text-slate-100 truncate">
                           {p.name}
                         </span>
+                        {p.isHost && (
+                          <span className="text-[10px] font-mono text-amber-300 bg-amber-950/80 px-1.5 py-0.2 rounded border border-amber-800 flex items-center space-x-1">
+                            <Crown className="w-2.5 h-2.5 text-amber-300" />
+                            <span>{t.hostBadge}</span>
+                          </span>
+                        )}
                         {isLocal && (
                           <span className="text-[10px] font-mono text-cyan-400 bg-cyan-950/80 px-1.5 py-0.2 rounded border border-cyan-800">
                             {t.youBadge}
@@ -304,17 +310,44 @@ export const LobbyRoom: React.FC<LobbyRoomProps> = ({
                     </div>
                   </div>
 
-                  {/* Ready Status & Kick Action */}
+                  {/* Ready Status & Actions */}
                   <div className="flex items-center space-x-2 flex-shrink-0">
-                    <span
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-orbitron font-bold uppercase tracking-wider ${
-                        p.isReady
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
-                          : 'bg-slate-800 text-slate-400 border border-slate-700'
-                      }`}
-                    >
-                      {p.isReady ? t.readyStatus : t.waitingStatus}
-                    </span>
+                    {isLocal ? (
+                      <button
+                        onClick={handleReadyClick}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-orbitron font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center space-x-1 ${
+                          p.isReady
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 hover:bg-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
+                            : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-750 hover:text-white'
+                        }`}
+                        title={lang === 'ru' ? 'Нажмите, чтобы изменить статус готовности' : 'Click to toggle ready status'}
+                      >
+                        <span>{p.isReady ? '✓' : '○'}</span>
+                        <span>{p.isReady ? t.readyStatus : t.waitingStatus}</span>
+                      </button>
+                    ) : (
+                      <span
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-orbitron font-bold uppercase tracking-wider ${
+                          p.isReady
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                            : 'bg-slate-800 text-slate-400 border border-slate-700'
+                        }`}
+                      >
+                        {p.isReady ? t.readyStatus : t.waitingStatus}
+                      </span>
+                    )}
+
+                    {/* Host Start Game Button right next to Ready on host card */}
+                    {p.isHost && isHost && (
+                      <button
+                        onClick={handleStartNowClick}
+                        className="px-3 py-1 rounded-lg bg-pink-600 hover:bg-pink-500 active:scale-95 text-white font-orbitron font-extrabold text-[11px] uppercase tracking-wider flex items-center space-x-1.5 shadow-[0_0_12px_rgba(236,72,153,0.45)] border border-pink-400/40 transition-all cursor-pointer"
+                        title={lang === 'ru' ? 'Начать игру немедленно' : 'Start game now'}
+                      >
+                        <Play className="w-3 h-3 fill-white" />
+                        <span>{t.startBtn}</span>
+                      </button>
+                    )}
 
                     {/* Kick Button for Host */}
                     {isHost && !isLocal && (
@@ -547,17 +580,6 @@ export const LobbyRoom: React.FC<LobbyRoomProps> = ({
           >
             {localPlayer.isReady ? t.readyBtnReady : t.readyBtnNotReady}
           </button>
-
-          {/* Host Start Now Button */}
-          {isHost && (
-            <button
-              onClick={handleStartNowClick}
-              className="flex-1 sm:flex-none px-6 py-3.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-orbitron font-extrabold text-sm tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(236,72,153,0.4)] transition-all cursor-pointer"
-            >
-              <Play className="w-4 h-4 fill-white" />
-              <span>{t.startNowBtn}</span>
-            </button>
-          )}
         </div>
       </div>
     </div>

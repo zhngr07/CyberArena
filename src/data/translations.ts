@@ -88,6 +88,7 @@ export const TRANSLATIONS = {
     readyBtnReady: '✓ ВЫ ГОТОВЫ!',
     readyBtnNotReady: 'НАЖМИ «ГОТОВ»',
     startNowBtn: 'НАЧАТЬ СЕЙЧАС',
+    startBtn: 'НАЧАТЬ',
     countdownText: 'БИТВА НАЧНЁТСЯ ЧЕРЕЗ',
 
     // Game HUD & Canvas
@@ -341,6 +342,7 @@ export const TRANSLATIONS = {
     readyBtnReady: '✓ YOU ARE READY',
     readyBtnNotReady: 'CLICK TO READY UP',
     startNowBtn: 'START NOW',
+    startBtn: 'START',
     countdownText: 'BATTLE COMMENCING IN',
 
     // Game HUD & Canvas
