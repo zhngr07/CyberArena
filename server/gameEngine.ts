@@ -176,9 +176,11 @@ export class GameEngine {
     if (this.room.gameMode === 'boss_raid') {
       this.room.matchTimeRemaining = 360;
       this.room.matchDuration = 360;
+      // Base stats: 38,000 HP and 9,000 Shield for solo pilot
+      // Dynamic co-op difficulty scaling: +15,000 HP and +6,000 Shield per each additional player/bot
       const playerCount = Math.max(1, Object.keys(this.room.players).length);
-      const bossHp = 38000 + playerCount * 15000;
-      const bossShield = 9000 + playerCount * 6000;
+      const bossHp = 38000 + (playerCount - 1) * 15000;
+      const bossShield = 9000 + (playerCount - 1) * 6000;
       this.room.boss = {
         id: 'boss_omega',
         name: 'ТИТАН ПУСТОТЫ • ОМЕГА [BETA 0.7]',

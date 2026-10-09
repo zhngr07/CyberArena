@@ -602,6 +602,11 @@ export class RoomManager {
     const room = this.rooms.get(roomCode);
     if (!room) return;
 
+    if (room.gameMode === 'boss_raid') {
+      room.matchTimeRemaining = 360;
+      room.matchDuration = 360;
+    }
+
     // Create & run game engine
     const engine = new GameEngine(room, {
       onTick: (tickData) => {

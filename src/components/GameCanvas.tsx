@@ -449,6 +449,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       if (tick.obstacles && tick.obstacles.length > 0) serverObstaclesRef.current = tick.obstacles;
       if (tick.powerUps) serverPowerUpsRef.current = tick.powerUps;
+      if (tick.boss !== undefined) bossRef.current = tick.boss;
       localProjectiles.current = tick.projectiles.map((b) => ({ ...b }));
 
       const lp = updated[localPlayerId];
@@ -1907,6 +1908,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   const isSmallScreen = isMobile || screenWidth < 680 || screenHeight < 500;
   const showTouchControls = isTouch || isMobile || isTablet;
+  const activeBoss = bossRef.current || boss;
 
   return (
     <div
@@ -1998,22 +2000,22 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             style={{ transform: `scale(${uiScale})`, transformOrigin: 'top center' }}
           >
             {/* Cinematic Boss Raid Bar (When Boss is Active) */}
-            {boss && boss.health > 0 && (
+            {activeBoss && activeBoss.health > 0 && (
               <div className="w-80 sm:w-96 bg-slate-950/95 border border-rose-500/50 rounded-xl p-2.5 shadow-[0_0_25px_rgba(244,63,94,0.35)] mb-2 backdrop-blur-md animate-in fade-in slide-in-from-top-3">
                 <div className="flex items-center justify-between text-[11px] font-orbitron font-bold text-rose-300 mb-1">
                   <span className="flex items-center gap-1.5 truncate">
-                    ⚔️ {boss.name}
+                    ⚔️ {activeBoss.name}
                   </span>
                   <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-rose-950 text-rose-400 border border-rose-700">
-                    {boss.phase === 3 ? '⚡ ФАЗА 3' : boss.phase === 2 ? '🛡️ ФАЗА 2' : '💥 ФАЗА 1'}
+                    {activeBoss.phase === 3 ? '⚡ ФАЗА 3' : activeBoss.phase === 2 ? '🛡️ ФАЗА 2' : '💥 ФАЗА 1'}
                   </span>
                 </div>
                 {/* Shield Bar */}
-                {boss.shield > 0 && (
+                {activeBoss.shield > 0 && (
                   <div className="h-1.5 bg-slate-900 rounded-full overflow-hidden border border-cyan-500/40 mb-1">
                     <div
                       className="h-full bg-cyan-400 transition-all duration-100"
-                      style={{ width: `${Math.max(0, (boss.shield / boss.maxShield) * 100)}%` }}
+                      style={{ width: `${Math.max(0, (activeBoss.shield / activeBoss.maxShield) * 100)}%` }}
                     />
                   </div>
                 )}
@@ -2021,14 +2023,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 <div className="h-3 bg-slate-900 rounded-full overflow-hidden border border-rose-900">
                   <div
                     className="h-full bg-gradient-to-r from-rose-600 via-pink-500 to-rose-400 transition-all duration-100"
-                    style={{ width: `${Math.max(0, (boss.health / boss.maxHealth) * 100)}%` }}
+                    style={{ width: `${Math.max(0, (activeBoss.health / activeBoss.maxHealth) * 100)}%` }}
                   />
                 </div>
                 <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mt-1">
-                  <span>HP: {boss.health.toLocaleString()} / {boss.maxHealth.toLocaleString()}</span>
-                  {boss.mvpPlayerName && (
+                  <span>
+                    HP: {Math.round(activeBoss.health).toLocaleString()} / {activeBoss.maxHealth.toLocaleString()}
+                    {activeBoss.shield > 0 && (
+                      <span className="text-cyan-400 ml-2">
+                        | {lang === 'ru' ? 'ЩИТ' : 'SHIELD'}: {Math.round(activeBoss.shield).toLocaleString()} / {activeBoss.maxShield.toLocaleString()}
+                      </span>
+                    )}
+                  </span>
+                  {activeBoss.mvpPlayerName && (
                     <span className="text-amber-400 font-bold truncate max-w-[150px]">
-                      👑 MVP: {boss.mvpPlayerName}
+                      👑 MVP: {activeBoss.mvpPlayerName}
                     </span>
                   )}
                 </div>
@@ -2076,12 +2085,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   }}
                 />
                 {/* Boss radar marker */}
-                {boss && boss.health > 0 && (
+                {activeBoss && activeBoss.health > 0 && (
                   <div
                     className="absolute w-3 h-3 rounded-full bg-rose-600 ring-2 ring-rose-400 animate-ping z-10 shadow-[0_0_8px_rgba(244,63,94,1)]"
                     style={{
-                      left: `${(boss.x / mapWidth) * 100}%`,
-                      top: `${(boss.y / mapHeight) * 100}%`,
+                      left: `${(activeBoss.x / mapWidth) * 100}%`,
+                      top: `${(activeBoss.y / mapHeight) * 100}%`,
                       transform: 'translate(-50%, -50%)',
                     }}
                   />
@@ -2172,17 +2181,35 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             className="flex flex-col items-center pointer-events-auto"
             style={{ transform: `scale(${uiScale})`, transformOrigin: 'top center' }}
           >
-            {boss && boss.health > 0 && (
-              <div className="w-36 sm:w-48 bg-slate-950/95 border border-rose-500/50 rounded-lg p-1 shadow-md mb-1">
-                <div className="flex items-center justify-between text-[8px] font-orbitron text-rose-300">
-                  <span className="truncate">⚔️ БОСС</span>
-                  <span>{Math.round((boss.health / boss.maxHealth) * 100)}%</span>
+            {activeBoss && activeBoss.health > 0 && (
+              <div className="w-40 sm:w-52 bg-slate-950/95 border border-rose-500/50 rounded-lg p-1.5 shadow-md mb-1">
+                <div className="flex items-center justify-between text-[9px] font-orbitron text-rose-300">
+                  <span className="truncate">⚔️ {activeBoss.name || 'БОСС'}</span>
+                  <span className="font-mono text-[8px] text-cyan-300">
+                    {Math.round((activeBoss.health / activeBoss.maxHealth) * 100)}%
+                  </span>
                 </div>
+                {activeBoss.shield > 0 && (
+                  <div className="h-1 bg-slate-900 rounded-full overflow-hidden border border-cyan-500/40 mt-0.5">
+                    <div
+                      className="h-full bg-cyan-400"
+                      style={{ width: `${Math.max(0, (activeBoss.shield / activeBoss.maxShield) * 100)}%` }}
+                    />
+                  </div>
+                )}
                 <div className="h-1.5 bg-slate-900 rounded-full overflow-hidden border border-rose-900 mt-0.5">
                   <div
-                    className="h-full bg-rose-500"
-                    style={{ width: `${Math.max(0, (boss.health / boss.maxHealth) * 100)}%` }}
+                    className="h-full bg-gradient-to-r from-rose-600 to-pink-500"
+                    style={{ width: `${Math.max(0, (activeBoss.health / activeBoss.maxHealth) * 100)}%` }}
                   />
+                </div>
+                <div className="flex justify-between items-center text-[8px] font-mono text-slate-400 mt-0.5">
+                  <span>HP: {Math.round(activeBoss.health).toLocaleString()}</span>
+                  {activeBoss.shield > 0 && (
+                    <span className="text-cyan-400">
+                      {lang === 'ru' ? 'ЩИТ' : 'SHD'}: {Math.round(activeBoss.shield).toLocaleString()}
+                    </span>
+                  )}
                 </div>
               </div>
             )}
