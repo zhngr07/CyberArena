@@ -31,7 +31,7 @@ interface ShopModalProps {
   onEquipCosmetics: (cosmetics: PlayerCosmetics) => void;
 }
 
-type ShopCategory = 'ship' | 'hat' | 'trail' | 'title';
+type ShopCategory = 'ship' | 'hat' | 'accessory' | 'trail' | 'title';
 
 export const ShopModal: React.FC<ShopModalProps> = ({
   isOpen,
@@ -73,6 +73,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
     const nextEquipped: PlayerCosmetics = { ...equipped };
     if (item.category === 'ship') nextEquipped.shipModel = item.value as any;
     if (item.category === 'hat') nextEquipped.hat = item.value as any;
+    if (item.category === 'accessory') nextEquipped.accessory = item.value as any;
     if (item.category === 'trail') nextEquipped.trail = item.value as any;
     if (item.category === 'title') nextEquipped.title = item.value as any;
 
@@ -151,6 +152,16 @@ export const ShopModal: React.FC<ShopModalProps> = ({
             <span>{t.tabHats}</span>
           </button>
           <button
+            onClick={() => setActiveTab('accessory')}
+            className={`px-4 py-2.5 text-xs font-orbitron font-bold rounded-t-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              activeTab === 'accessory'
+                ? 'bg-slate-900 border-t-2 border-x border-teal-400 text-teal-300 shadow-sm'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <span>{t.tabAccessories || '🪽 ОБВЕСЫ'}</span>
+          </button>
+          <button
             onClick={() => setActiveTab('trail')}
             className={`px-4 py-2.5 text-xs font-orbitron font-bold rounded-t-xl transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'trail'
@@ -180,6 +191,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
               const isEquipped =
                 (item.category === 'ship' && equipped.shipModel === item.value) ||
                 (item.category === 'hat' && equipped.hat === item.value) ||
+                (item.category === 'accessory' && (equipped.accessory || 'none') === item.value) ||
                 (item.category === 'trail' && equipped.trail === item.value) ||
                 (item.category === 'title' && equipped.title === item.value);
 

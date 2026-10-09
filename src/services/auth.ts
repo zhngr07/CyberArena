@@ -27,6 +27,8 @@ export interface PilotProfile {
 
 type AuthListener = (user: PilotProfile | null) => void;
 
+const API_URL = typeof window !== 'undefined' ? window.location.origin : '';
+
 class AuthService {
   private user: PilotProfile | null = null;
   private token: string | null = null;
@@ -77,16 +79,17 @@ class AuthService {
   public async fetchMe(): Promise<PilotProfile | null> {
     if (!this.token) return null;
     try {
-      const res = await fetch('/api/auth/me', {
+      const res = await fetch(`${API_URL}/api/auth/me`, {
         headers: { Authorization: `Bearer ${this.token}` },
       });
       const data = await res.json();
-      if (data.success && data.user) {
-        this.user = data.user;
-        this.persistUser(data.user);
-        this.notify();
-        return data.user;
-      }
+
+if (data.success && data.user) {
+  this.user = data.user;
+  this.persistUser(data.user);
+  this.notify();
+  return data.user;
+}
     } catch {
       // offline / transient
     }
@@ -94,7 +97,7 @@ class AuthService {
   }
 
   public async register(username: string, password: string, initialData?: any): Promise<PilotProfile> {
-    const res = await fetch('/api/auth/register', {
+    const res = await fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password, initialData }),
@@ -113,7 +116,7 @@ class AuthService {
   }
 
   public async login(username: string, password: string): Promise<PilotProfile> {
-    const res = await fetch('/api/auth/login', {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
@@ -157,7 +160,7 @@ class AuthService {
   }): Promise<PilotProfile | null> {
     if (!this.token) return null;
     try {
-      const res = await fetch('/api/auth/sync', {
+      const res = await fetch(`${API_URL}/api/auth/sync`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -180,7 +183,7 @@ class AuthService {
 
   public async getTopPilots(): Promise<PilotProfile[]> {
     try {
-      const res = await fetch('/api/leaderboard/pilots');
+      const res = await fetch(`${API_URL}/api/leaderboard/pilots`);
       const data = await res.json();
       return data.pilots || [];
     } catch {

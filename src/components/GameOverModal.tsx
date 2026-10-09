@@ -132,7 +132,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                   <th className="pb-2.5 text-right">{t.scoreHeader}</th>
                   <th className="pb-2.5 text-right">{t.killsHeader}</th>
                   <th className="pb-2.5 text-right">{t.deathsHeader}</th>
-                  <th className="pb-2.5 text-right">{t.accuracyHeader}</th>
+                  <th className="pb-2.5 text-right hidden xs:table-cell">{t.accuracyHeader}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
@@ -176,7 +176,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                       <td className="py-2.5 text-right font-bold text-cyan-400">{p.score}</td>
                       <td className="py-2.5 text-right text-emerald-400">{p.kills}</td>
                       <td className="py-2.5 text-right text-rose-400">{p.deaths}</td>
-                      <td className="py-2.5 text-right text-slate-400">{p.accuracy}%</td>
+                      <td className="py-2.5 text-right text-slate-400 hidden xs:table-cell">{p.accuracy}%</td>
                     </tr>
                   );
                 })}

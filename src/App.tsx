@@ -422,23 +422,25 @@ export default function App() {
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-pink-500/10 rounded-full blur-[120px] pointer-events-none" />
 
-      {/* Global Navigation Header */}
-      <Header
-        latency={latency}
-        lang={lang}
-        coins={coins}
-        currentUser={currentUser}
-        onToggleLang={() => setLang((l) => (l === 'ru' ? 'en' : 'ru'))}
-        onOpenHelp={() => setShowHelp(true)}
-        onOpenShop={() => setShowShop(true)}
-        onOpenSettings={() => setShowSettings(true)}
-        onOpenWhatsNew={() => setShowWhatsNew(true)}
-        onOpenProfile={() => (currentUser ? setShowProfile(true) : setShowAuth(true))}
-        onOpenLeaderboard={() => setShowLeaderboard(true)}
-      />
+      {/* Global Navigation Header - hidden on mobile during combat to maximize screen space */}
+      <div className={view === 'game' ? 'hidden md:block' : 'block'}>
+        <Header
+          latency={latency}
+          lang={lang}
+          coins={coins}
+          currentUser={currentUser}
+          onToggleLang={() => setLang((l) => (l === 'ru' ? 'en' : 'ru'))}
+          onOpenHelp={() => setShowHelp(true)}
+          onOpenShop={() => setShowShop(true)}
+          onOpenSettings={() => setShowSettings(true)}
+          onOpenWhatsNew={() => setShowWhatsNew(true)}
+          onOpenProfile={() => (currentUser ? setShowProfile(true) : setShowAuth(true))}
+          onOpenLeaderboard={() => setShowLeaderboard(true)}
+        />
+      </div>
 
       {/* Main View Router */}
-      <main className={`flex-1 flex flex-col relative z-10 ${view !== 'game' ? 'overflow-y-auto overscroll-contain h-[calc(100dvh-60px)] touch-pan-y' : 'overflow-hidden'}`}>
+      <main className={`flex-1 flex flex-col relative z-10 ${view !== 'game' ? 'overflow-y-auto overscroll-contain h-[calc(100dvh-60px)] touch-pan-y' : 'overflow-hidden h-full'}`}>
         {view === 'menu' && (
           <MainMenu
             playerName={playerName}

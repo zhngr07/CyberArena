@@ -87,6 +87,12 @@ export const MobileVirtualControls: React.FC<MobileVirtualControlsProps> = ({
       const clientX = touch.clientX;
       const clientY = touch.clientY;
 
+      // Ignore touches in top 64px area so players can reliably tap top HUD buttons
+      // (Settings, Leave Match, Radar toggle, Debug) without triggering joystick movement
+      if (clientY < 64) {
+        continue;
+      }
+
       const isTouchOnLeftHalf = clientX < screenMidX;
       // In left-handed mode: movement is on right half, aim/fire is on left half
       const isMoveZone = isLeftHanded ? !isTouchOnLeftHalf : isTouchOnLeftHalf;
@@ -234,7 +240,7 @@ export const MobileVirtualControls: React.FC<MobileVirtualControlsProps> = ({
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 z-30 select-none gameplay-touch-area overflow-hidden pointer-events-auto"
+      className="absolute inset-0 z-30 select-none gameplay-touch-area overflow-hidden pointer-events-auto touch-none"
       style={{ opacity: settings.opacity }}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

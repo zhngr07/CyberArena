@@ -253,20 +253,19 @@ class NetworkClient {
   }
 
   public connectWebSocket(): Promise<void> {
-    return new Promise((resolve) => {
-      if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
-        resolve();
-        return;
-      }
+  return new Promise((resolve) => {
+    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
+      resolve();
+      return;
+    }
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const wsUrl = `${protocol}//${host}/ws`;
+    const wsUrl = 'wss://cyberarena-ckd3.onrender.com/ws';
 
-      try {
-        const thisConnId = ++this.connectionId;
-        const ws = new WebSocket(wsUrl);
-        this.ws = ws;
+    try {
+      const thisConnId = ++this.connectionId;
+      const ws = new WebSocket(wsUrl);
+
+      this.ws = ws;
 
         ws.onopen = () => {
           if (this.connectionId !== thisConnId) return; // Discard stale connection

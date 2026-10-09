@@ -525,8 +525,8 @@ export const LobbyRoom: React.FC<LobbyRoomProps> = ({
         </div>
       </div>
 
-      {/* Action Footer */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 backdrop-blur-md">
+      {/* Action Footer - sticky for convenient mobile ready/start access */}
+      <div className="sticky bottom-2 z-20 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/95 border border-cyan-500/40 rounded-2xl p-3 sm:p-4 backdrop-blur-md shadow-[0_0_25px_rgba(0,0,0,0.8)]">
         <button
           onClick={onLeaveRoom}
           className="w-full sm:w-auto px-5 py-3 rounded-xl bg-slate-800/80 hover:bg-rose-950/50 border border-slate-700 hover:border-rose-500/50 text-slate-300 hover:text-rose-300 font-orbitron text-xs font-bold flex items-center justify-center space-x-2 transition-all cursor-pointer"

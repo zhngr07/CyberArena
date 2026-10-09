@@ -9,12 +9,16 @@ import {
   Player,
   PlayerInput,
   PowerUp,
+  ShipModelType,
+  HatType,
+  AccessoryType,
+  TrailType,
 } from '../types/game.ts';
 import { MAPS } from '../data/maps.ts';
 import { GAME_CONSTANTS, WEAPONS, MODIFIER_METAS } from '../data/weapons.ts';
 import { soundManager } from '../services/audio.ts';
 import { networkManager } from '../services/network.ts';
-import { Shield, Zap, Crosshair, Trophy, Activity, Sliders, Radio, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { Shield, Zap, Crosshair, Trophy, Activity, Sliders, Radio, ChevronDown, ChevronUp, Settings, LogOut } from 'lucide-react';
 import { Language, TRANSLATIONS } from '../data/translations.ts';
 import { NetworkDebugOverlay } from './NetworkDebugOverlay.tsx';
 import { MobileVirtualControls } from './MobileVirtualControls.tsx';
@@ -22,6 +26,12 @@ import { OrientationWarning } from './OrientationWarning.tsx';
 import { useDeviceOrientation } from '../hooks/useDeviceOrientation.ts';
 import { MobileControlSettings, DEFAULT_MOBILE_SETTINGS, triggerHaptic } from '../types/mobileControls.ts';
 import { calculateAimAssist } from '../services/aimAssist.ts';
+import {
+  drawProceduralShipHull,
+  drawShipHats,
+  drawShipAccessories,
+  getTrailParticleStyle,
+} from './renderShipCosmetics.ts';
 
 interface GameCanvasProps {
   localPlayerId: string;
@@ -102,6 +112,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   mobileSettings = DEFAULT_MOBILE_SETTINGS,
   boss,
   onOpenSettings,
+  onExitGame,
   onSendInput,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -527,40 +538,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     const revAngle = angle + Math.PI + spread;
     const speed = 40 + Math.random() * 80;
 
-    let color = '#38bdf8';
-    let size = 2 + Math.random() * 3;
-    let type: 'spark' | 'smoke' | 'matrix' | 'star' = 'spark';
-
-    if (trailType === 'fire') {
-      color = Math.random() > 0.4 ? '#f97316' : '#ef4444';
-      size = 3 + Math.random() * 4;
-      type = 'smoke';
-    } else if (trailType === 'lightning') {
-      color = Math.random() > 0.5 ? '#38bdf8' : '#e0e7ff';
-      size = 2 + Math.random() * 3;
-      type = 'spark';
-    } else if (trailType === 'rainbow') {
-      const hues = [0, 45, 120, 190, 280, 320];
-      color = `hsl(${hues[Math.floor(Math.random() * hues.length)]}, 100%, 65%)`;
-    } else if (trailType === 'matrix') {
-      color = '#22c55e';
-      type = 'matrix';
-    } else if (trailType === 'stars') {
-      color = '#facc15';
-      type = 'star';
-    }
+    const style = getTrailParticleStyle(trailType);
 
     particles.current.push({
       x,
       y,
       vx: Math.cos(revAngle) * speed,
       vy: Math.sin(revAngle) * speed,
-      color,
+      color: style.color,
       alpha: 0.85,
-      size,
+      size: style.size,
       life: 0,
       maxLife: 0.25 + Math.random() * 0.2,
-      type,
+      type: style.type,
     });
   }, []);
 
@@ -690,7 +680,69 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           );
         }
         angle = rawAngle;
+      } else if (showTouchControls) {
+        // MOBILE CONTROLS: When no aim stick is touched
+        // 1. If shooting (FIRE button held or autoFire), lock aim onto nearest target (Boss or enemy)
+        if (shooting) {
+          let closestTargetAngle: number | null = null;
+          let minTargetDist = 550;
+
+          // Check Boss first if active
+          if (bossRef.current && bossRef.current.health > 0) {
+            const bdx = bossRef.current.x - localPredictedPos.current.x;
+            const bdy = bossRef.current.y - localPredictedPos.current.y;
+            const bdist = Math.hypot(bdx, bdy);
+            if (bdist < minTargetDist) {
+              closestTargetAngle = Math.atan2(bdy, bdx);
+              minTargetDist = bdist;
+            }
+          }
+
+          // Check Boss mini-NPC minions (shield guards, kamikazes, drones)
+          if (bossRef.current && bossRef.current.minions) {
+            for (const m of bossRef.current.minions) {
+              if (m.health <= 0) continue;
+              const mdx = m.x - localPredictedPos.current.x;
+              const mdy = m.y - localPredictedPos.current.y;
+              const mdist = Math.hypot(mdx, mdy);
+              if (mdist < minTargetDist) {
+                closestTargetAngle = Math.atan2(mdy, mdx);
+                minTargetDist = mdist;
+              }
+            }
+          }
+
+          // Check visible enemy players
+          const visibleEnemies = Object.values(serverPlayersRef.current).filter(
+            (p) => p && p.id !== localPlayerId && !p.isDead && (!p.stealthRemaining || p.stealthRemaining <= 0)
+          );
+          for (const enemy of visibleEnemies) {
+            if (enemy.x === undefined || enemy.y === undefined) continue;
+            const edx = enemy.x - localPredictedPos.current.x;
+            const edy = enemy.y - localPredictedPos.current.y;
+            const edist = Math.hypot(edx, edy);
+            if (edist < minTargetDist) {
+              minTargetDist = edist;
+              closestTargetAngle = Math.atan2(edy, edx);
+            }
+          }
+
+          if (closestTargetAngle !== null) {
+            angle = closestTargetAngle;
+          } else if (moveX !== 0 || moveY !== 0) {
+            angle = Math.atan2(moveY, moveX);
+          } else {
+            angle = localPredictedPos.current.angle ?? 0;
+          }
+        } else if (moveX !== 0 || moveY !== 0) {
+          // Running without shooting: aim ship in movement direction
+          angle = Math.atan2(moveY, moveX);
+        } else {
+          // Idle: keep current ship heading
+          angle = localPredictedPos.current.angle ?? 0;
+        }
       } else if (canvasRef.current) {
+        // DESKTOP: Aim with mouse cursor
         const canvas = canvasRef.current;
         const rect = canvas.getBoundingClientRect();
         const screenCenterX = rect.width / 2;
@@ -735,7 +787,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     let lastTime = performance.now();
 
     const render = (time: number) => {
-      const dt = Math.min(0.064, (time - lastTime) / 1000);
+      // High-precision smooth frame delta interpolation (optimized for 60-120Hz displays)
+      const dt = Math.max(0.001, Math.min(0.05, (time - lastTime) / 1000));
       lastTime = time;
 
       // Track FPS
@@ -759,8 +812,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
 
       // Resize canvas to match display size with optimal DPR for mobile and desktop hardware
-      const width = window.innerWidth;
-      const height = window.innerHeight - 56;
+      const width = canvas.parentElement?.clientWidth || window.innerWidth;
+      const height = canvas.parentElement?.clientHeight || (window.innerHeight - 56);
       const isBoost = fpsBoostRef.current;
       const quality = mobileSettingsRef.current.graphicsQuality;
 
@@ -782,8 +835,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.save(); // [SAVE 1: DPR Scale]
       ctx.scale(dpr, dpr);
 
-      const localPlayer = serverPlayersRef.current[localPlayerId];
-      const activeMap = mapRef.current;
+      try {
+        const localPlayer = serverPlayersRef.current[localPlayerId];
+      const activeMap = mapRef.current || map || {
+        id: 'neon_grid',
+        name: 'Cyber Neon Grid',
+        theme: 'cyan',
+        width: 2400,
+        height: 1600,
+        description: 'Default Arena',
+        gameplayFeature: 'Balanced',
+        obstacles: [],
+        spawnPoints: [{ x: 500, y: 500 }, { x: 1900, y: 1100 }],
+      };
+      const activeMapWidth = activeMap?.width || mapWidth || 2400;
+      const activeMapHeight = activeMap?.height || mapHeight || 1600;
       const activeLang = langRef.current;
       const useGlow = !isBoost && quality === 'high'; // Disable raster blur on low/med for 60-120 FPS
 
@@ -855,8 +921,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Clamp to map boundaries
         const r = GAME_CONSTANTS.PLAYER_RADIUS;
-        localPredictedPos.current.x = Math.max(r, Math.min(activeMap.width - r, localPredictedPos.current.x));
-        localPredictedPos.current.y = Math.max(r, Math.min(activeMap.height - r, localPredictedPos.current.y));
+        localPredictedPos.current.x = Math.max(r, Math.min(activeMapWidth - r, localPredictedPos.current.x));
+        localPredictedPos.current.y = Math.max(r, Math.min(activeMapHeight - r, localPredictedPos.current.y));
 
         // Obstacle collisions on predicted position
         const currentObstacles = serverObstaclesRef.current.length > 0 ? serverObstaclesRef.current : obstacles;
@@ -982,8 +1048,9 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.fillStyle = '#030712';
       ctx.fillRect(0, 0, width, height);
 
-      ctx.save();
-      ctx.translate(-camera.current.x + shakeX, -camera.current.y + shakeY);
+      ctx.save(); // [SAVE 2: Camera Translation]
+      try {
+        ctx.translate(-camera.current.x + shakeX, -camera.current.y + shakeY);
 
       // Draw Arena Outer Boundaries
       ctx.strokeStyle = '#06b6d4';
@@ -992,7 +1059,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.shadowColor = '#06b6d4';
         ctx.shadowBlur = 18;
       }
-      ctx.strokeRect(0, 0, activeMap.width, activeMap.height);
+      ctx.strokeRect(0, 0, activeMapWidth, activeMapHeight);
       if (useGlow) ctx.shadowBlur = 0;
 
       // Draw Cyber Grid Lines
@@ -1000,18 +1067,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       ctx.strokeStyle = 'rgba(6, 182, 212, 0.08)';
       ctx.lineWidth = 1;
       const startX = Math.max(0, Math.floor(camera.current.x / gridSize) * gridSize);
-      const endX = Math.min(activeMap.width, camera.current.x + width + gridSize);
+      const endX = Math.min(activeMapWidth, camera.current.x + width + gridSize);
       const startY = Math.max(0, Math.floor(camera.current.y / gridSize) * gridSize);
-      const endY = Math.min(activeMap.height, camera.current.y + height + gridSize);
+      const endY = Math.min(activeMapHeight, camera.current.y + height + gridSize);
 
       ctx.beginPath();
       for (let x = startX; x <= endX; x += gridSize) {
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, activeMap.height);
+        ctx.lineTo(x, activeMapHeight);
       }
       for (let y = startY; y <= endY; y += gridSize) {
         ctx.moveTo(0, y);
-        ctx.lineTo(activeMap.width, y);
+        ctx.lineTo(activeMapWidth, y);
       }
       ctx.stroke();
 
@@ -1459,148 +1526,21 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         const shipColor = p.color || '#06b6d4';
         const cosmetics = p.cosmetics || { shipModel: 'phantom', hat: 'none', trail: 'default', title: 'rookie' };
 
-        // DRAW CUSTOM SHIP HULL SILHOUETTE
-        ctx.fillStyle = shipColor;
-        if (useGlow) {
-          ctx.shadowColor = shipColor;
-          ctx.shadowBlur = 10;
-        }
+        // DRAW CUSTOM PROCEDURAL SHIP HULL SILHOUETTE (ALL 25 SHIPS)
+        drawProceduralShipHull(ctx, cosmetics.shipModel as ShipModelType, shipColor, useGlow);
 
-        if (cosmetics.shipModel === 'dragon') {
-          // Cyber Dragon: aggressive twin forward swept wings + dual nose
-          ctx.beginPath();
-          ctx.moveTo(24, -3);
-          ctx.lineTo(24, 3);
-          ctx.lineTo(14, 8);
-          ctx.lineTo(-6, 22);
-          ctx.lineTo(-12, 14);
-          ctx.lineTo(-4, 6);
-          ctx.lineTo(-16, 4);
-          ctx.lineTo(-16, -4);
-          ctx.lineTo(-4, -6);
-          ctx.lineTo(-12, -14);
-          ctx.lineTo(-6, -22);
-          ctx.lineTo(14, -8);
-          ctx.closePath();
-          ctx.fill();
-        } else if (cosmetics.shipModel === 'raven') {
-          // Stealth Raven: faceted angular jet
-          ctx.beginPath();
-          ctx.moveTo(25, 0);
-          ctx.lineTo(5, 18);
-          ctx.lineTo(-15, 15);
-          ctx.lineTo(-6, 5);
-          ctx.lineTo(-18, 0);
-          ctx.lineTo(-6, -5);
-          ctx.lineTo(-15, -15);
-          ctx.lineTo(5, -18);
-          ctx.closePath();
-          ctx.fill();
-        } else if (cosmetics.shipModel === 'dreadnought') {
-          // Heavy Dreadnought: hexagonal heavy armor
-          ctx.beginPath();
-          ctx.moveTo(20, -10);
-          ctx.lineTo(20, 10);
-          ctx.lineTo(8, 20);
-          ctx.lineTo(-16, 16);
-          ctx.lineTo(-20, 0);
-          ctx.lineTo(-16, -16);
-          ctx.lineTo(8, -20);
-          ctx.closePath();
-          ctx.fill();
-          // Side gun pods
-          ctx.fillStyle = '#1e293b';
-          ctx.fillRect(4, -18, 12, 4);
-          ctx.fillRect(4, 14, 12, 4);
-        } else if (cosmetics.shipModel === 'ufo') {
-          // Quantum UFO: spinning ring and central disc
-          ctx.beginPath();
-          ctx.arc(0, 0, 20, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-        } else {
-          // Standard Phantom: sleek delta-wing
-          ctx.beginPath();
-          ctx.moveTo(24, 0);
-          ctx.lineTo(-14, -17);
-          ctx.lineTo(-8, 0);
-          ctx.lineTo(-14, 17);
-          ctx.closePath();
-          ctx.fill();
-        }
+        // DRAW HATS & HEADGEAR (18+ HATS)
+        drawShipHats(ctx, cosmetics.hat as HatType, useGlow);
 
-        // Cockpit canopy glow
-        ctx.fillStyle = '#ffffff';
-        if (useGlow) ctx.shadowBlur = 0;
-        ctx.beginPath();
-        ctx.arc(2, 0, 4.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // DRAW HATS & ACCESSORIES
-        if (cosmetics.hat === 'crown') {
-          ctx.fillStyle = '#facc15';
-          if (useGlow) {
-            ctx.shadowColor = '#facc15';
-            ctx.shadowBlur = 8;
-          }
-          ctx.beginPath();
-          ctx.moveTo(6, -8);
-          ctx.lineTo(12, -12);
-          ctx.lineTo(8, 0);
-          ctx.lineTo(12, 12);
-          ctx.lineTo(6, 8);
-          ctx.closePath();
-          ctx.fill();
-          if (useGlow) ctx.shadowBlur = 0;
-        } else if (cosmetics.hat === 'visor') {
-          ctx.fillStyle = '#22d3ee';
-          if (useGlow) {
-            ctx.shadowColor = '#22d3ee';
-            ctx.shadowBlur = 6;
-          }
-          ctx.fillRect(0, -6, 6, 12);
-          if (useGlow) ctx.shadowBlur = 0;
-        } else if (cosmetics.hat === 'horns') {
-          ctx.fillStyle = '#f43f5e';
-          if (useGlow) {
-            ctx.shadowColor = '#f43f5e';
-            ctx.shadowBlur = 8;
-          }
-          ctx.beginPath();
-          ctx.moveTo(0, -10);
-          ctx.lineTo(10, -18);
-          ctx.lineTo(4, -8);
-          ctx.moveTo(0, 10);
-          ctx.lineTo(10, 18);
-          ctx.lineTo(4, 8);
-          ctx.fill();
-          if (useGlow) ctx.shadowBlur = 0;
-        } else if (cosmetics.hat === 'halo') {
-          ctx.strokeStyle = '#fef08a';
-          ctx.lineWidth = 2.5;
-          if (useGlow) {
-            ctx.shadowColor = '#fde047';
-            ctx.shadowBlur = 10;
-          }
-          ctx.beginPath();
-          ctx.ellipse(2, 0, 14, 6, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          if (useGlow) ctx.shadowBlur = 0;
-        } else if (cosmetics.hat === 'samurai') {
-          ctx.strokeStyle = '#facc15';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(4, 0, 10, -Math.PI / 2, Math.PI / 2);
-          ctx.stroke();
-        } else if (cosmetics.hat === 'headset') {
-          ctx.strokeStyle = '#06b6d4';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.arc(0, 0, 15, -Math.PI * 0.7, Math.PI * 0.7);
-          ctx.stroke();
-        }
+        // DRAW ACCESSORIES (WINGS, ROTATING DRONES, AURAS, TAILS, GENERATORS)
+        drawShipAccessories(
+          ctx,
+          cosmetics.accessory as AccessoryType,
+          shipColor,
+          Boolean(p.isDashing),
+          performance.now(),
+          useGlow
+        );
 
         ctx.restore(); // Restore player rotation
 
@@ -1612,13 +1552,19 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         if (cosmetics.title && cosmetics.title !== 'rookie') {
           let titleText = '';
           if (cosmetics.title === 'sniper') titleText = activeLang === 'ru' ? '🎯 СНАЙПЕР' : '🎯 SNIPER';
-          if (cosmetics.title === 'slayer') titleText = activeLang === 'ru' ? '⚔️ ГРОЗА АРЕНЫ' : '⚔️ SLAYER';
-          if (cosmetics.title === 'untouchable') titleText = activeLang === 'ru' ? '🛡️ НЕУЯЗВИМЫЙ' : '🛡️ UNTOUCHABLE';
-          if (cosmetics.title === 'legend') titleText = activeLang === 'ru' ? '★ ЛЕГЕНДА ★' : '★ LEGEND ★';
+          else if (cosmetics.title === 'slayer') titleText = activeLang === 'ru' ? '⚔️ ГРОЗА АРЕНЫ' : '⚔️ SLAYER';
+          else if (cosmetics.title === 'untouchable') titleText = activeLang === 'ru' ? '🛡️ НЕУЯЗВИМЫЙ' : '🛡️ UNTOUCHABLE';
+          else if (cosmetics.title === 'legend') titleText = activeLang === 'ru' ? '★ ЛЕГЕНДА ★' : '★ LEGEND ★';
+          else if (cosmetics.title === 'titan_slayer') titleText = activeLang === 'ru' ? '👹 ТИТАН-КИЛЛЕР' : '👹 TITAN SLAYER';
+          else if (cosmetics.title === 'warlord') titleText = activeLang === 'ru' ? '🛡️ ВАРЛОРД' : '🛡️ WARLORD';
+          else if (cosmetics.title === 'void_walker') titleText = activeLang === 'ru' ? '🌌 СТРАННИК ПУСТОТЫ' : '🌌 VOID WALKER';
+          else if (cosmetics.title === 'cyber_god') titleText = activeLang === 'ru' ? '⚡ КИБЕР-БОГ' : '⚡ CYBER GOD';
+          else if (cosmetics.title === 'apex_predator') titleText = activeLang === 'ru' ? '🐺 АПЕКС ХИЩНИК' : '🐺 APEX PREDATOR';
+          else if (cosmetics.title === 'phantom_ghost') titleText = activeLang === 'ru' ? '👻 ПРИЗРАК' : '👻 GHOST';
 
           ctx.font = 'bold 9px Orbitron, sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillStyle = cosmetics.title === 'legend' ? '#f59e0b' : '#38bdf8';
+          ctx.fillStyle = (cosmetics.title === 'legend' || cosmetics.title === 'cyber_god') ? '#f59e0b' : '#38bdf8';
           ctx.fillText(titleText, 0, -GAME_CONSTANTS.PLAYER_RADIUS - 24);
         }
 
@@ -1765,10 +1711,111 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         }
 
         ctx.restore();
-      }
 
-      ctx.restore(); // [RESTORE 2: camera translation]
-      ctx.restore(); // [RESTORE 1: DPR scale - fixes context stack leak!]
+        // 11b. Render Mini-NPC Minions of the Void Titan
+        if (currentBoss.minions && currentBoss.minions.length > 0) {
+          for (const minion of currentBoss.minions) {
+            if (minion.health <= 0) continue;
+
+            // If Shield Guard, draw energetic energy tether beam powering the Void Titan
+            if (minion.type === 'shield_guard') {
+              ctx.save();
+              ctx.strokeStyle = 'rgba(56, 189, 248, 0.55)';
+              ctx.lineWidth = 2;
+              ctx.setLineDash([8, 8]);
+              ctx.lineDashOffset = -performance.now() * 0.05;
+              ctx.beginPath();
+              ctx.moveTo(minion.x, minion.y);
+              ctx.lineTo(currentBoss.x, currentBoss.y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.restore();
+            }
+
+            ctx.save();
+            ctx.translate(minion.x, minion.y);
+            ctx.rotate(minion.angle);
+
+            // Minion hull
+            if (minion.type === 'kamikaze') {
+              // Rapid blinking red strobe + trailing flame
+              const strobe = Math.sin(performance.now() * 0.025) > 0;
+              ctx.fillStyle = strobe ? '#ef4444' : '#f43f5e';
+              ctx.beginPath();
+              ctx.moveTo(minion.radius + 5, 0);
+              ctx.lineTo(-minion.radius, -minion.radius * 0.8);
+              ctx.lineTo(-minion.radius * 0.4, 0);
+              ctx.lineTo(-minion.radius, minion.radius * 0.8);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = '#fbcfe8';
+              ctx.lineWidth = 1.8;
+              ctx.stroke();
+
+              // Thruster flame
+              ctx.fillStyle = '#fbbf24';
+              ctx.beginPath();
+              ctx.moveTo(-minion.radius * 0.4, 0);
+              ctx.lineTo(-minion.radius - 7, -3);
+              ctx.lineTo(-minion.radius - 7, 3);
+              ctx.closePath();
+              ctx.fill();
+            } else if (minion.type === 'shield_guard') {
+              // Hexagonal armored shield core with rotating barrier arc
+              ctx.fillStyle = '#0284c7';
+              ctx.beginPath();
+              ctx.arc(0, 0, minion.radius, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.strokeStyle = '#38bdf8';
+              ctx.lineWidth = 2.5;
+              ctx.stroke();
+
+              // Rotating outer shield arc
+              const guardAngle = (performance.now() * 0.003) % (Math.PI * 2);
+              ctx.strokeStyle = '#67e8f9';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.arc(0, 0, minion.radius + 5, guardAngle, guardAngle + Math.PI);
+              ctx.stroke();
+            } else {
+              // Drone: sharp twin blaster nozzles & laser guide
+              ctx.fillStyle = '#7c3aed';
+              ctx.beginPath();
+              ctx.moveTo(minion.radius + 2, 0);
+              ctx.lineTo(-minion.radius * 0.6, -minion.radius * 0.7);
+              ctx.lineTo(-minion.radius * 0.3, 0);
+              ctx.lineTo(-minion.radius * 0.6, minion.radius * 0.7);
+              ctx.closePath();
+              ctx.fill();
+              ctx.strokeStyle = '#c084fc';
+              ctx.lineWidth = 1.5;
+              ctx.stroke();
+
+              // Twin blaster barrels
+              ctx.fillStyle = '#e9d5ff';
+              ctx.fillRect(minion.radius - 1, -5, 5, 2);
+              ctx.fillRect(minion.radius - 1, 3, 5, 2);
+            }
+
+            // Minion health bar
+            ctx.restore();
+            ctx.save();
+            ctx.translate(minion.x, minion.y);
+            const mHpPct = Math.max(0, minion.health / minion.maxHealth);
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.fillRect(-12, -minion.radius - 8, 24, 3);
+            ctx.fillStyle = minion.type === 'kamikaze' ? '#f43f5e' : minion.type === 'shield_guard' ? '#38bdf8' : '#a855f7';
+            ctx.fillRect(-12, -minion.radius - 8, 24 * mHpPct, 3);
+            ctx.restore();
+          }
+        }
+      }
+        } finally {
+          ctx.restore(); // [RESTORE 2: camera translation]
+        }
+      } finally {
+        ctx.restore(); // [RESTORE 1: DPR scale - 100% leak-proof!]
+      }
 
       animId = requestAnimationFrame(render);
     };
@@ -1863,7 +1910,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
   return (
     <div
-      className="relative w-full h-[calc(100vh-56px)] overflow-hidden bg-slate-950 select-none gameplay-touch-area"
+      className="relative w-full h-full md:h-[calc(100vh-56px)] max-md:h-[100dvh] overflow-hidden bg-slate-950 select-none gameplay-touch-area"
       style={{ touchAction: 'none' }}
     >
       {/* Game Canvas */}
@@ -1877,7 +1924,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       {/* RESPONSIVE TOP HUD */}
       {!isSmallScreen ? (
         /* TABLET & DESKTOP FULL TOP HUD */
-        <div className="absolute top-2 inset-x-3 sm:inset-x-4 flex items-start justify-between pointer-events-none z-20 safe-pt">
+        <div className="absolute top-2 inset-x-3 sm:inset-x-4 flex items-start justify-between pointer-events-none z-40 safe-pt">
           {/* Left: Leaderboard & Network Stats */}
           <div
             className="flex flex-col gap-1.5 pointer-events-auto"
@@ -2067,11 +2114,22 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 </div>
               ))}
             </div>
+
+            {onExitGame && (
+              <button
+                onClick={onExitGame}
+                className="self-end px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-rose-950/70 border border-slate-700 hover:border-rose-500/50 text-slate-300 hover:text-rose-300 text-xs font-orbitron font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+                title={lang === 'ru' ? 'Выйти в лобби' : 'Leave Match'}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>{lang === 'ru' ? 'ВЫЙТИ' : 'EXIT'}</span>
+              </button>
+            )}
           </div>
         </div>
       ) : (
         /* PHONE & SMALL SCREEN STREAMLINED COMPACT TOP HUD (Unobtrusive) */
-        <div className="absolute top-1.5 inset-x-2 flex items-start justify-between pointer-events-none z-20 safe-pt safe-pl safe-pr">
+        <div className="absolute top-1.5 inset-x-2 flex items-start justify-between pointer-events-none z-40 safe-pt safe-pl safe-pr">
           {/* Top Left: Compact Vitale Capsule (Hull + Shield + Weapon) */}
           {localPlayer && (
             <div
@@ -2159,6 +2217,16 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               </button>
             )}
 
+            {onExitGame && (
+              <button
+                onClick={onExitGame}
+                className="p-1.5 rounded-lg bg-rose-950/80 border border-rose-500/50 text-rose-300 hover:text-white transition-all cursor-pointer shadow-md"
+                title={lang === 'ru' ? 'Выйти в лобби' : 'Leave Match'}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
+
             <button
               onClick={() => setShowMobileRadar(!showMobileRadar)}
               className={`p-1.5 rounded-lg border text-[10px] font-mono flex items-center gap-1 transition-all cursor-pointer ${
@@ -2182,7 +2250,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       {/* MOBILE EXPANDED RADAR (When toggled on small screens) */}
       {isSmallScreen && showMobileRadar && (
-        <div className="absolute top-12 right-2 z-25 w-28 h-20 bg-slate-950/95 border border-cyan-500/50 rounded-lg overflow-hidden shadow-2xl animate-in fade-in duration-150">
+        <div className="absolute top-12 right-2 z-40 w-28 h-20 bg-slate-950/95 border border-cyan-500/50 rounded-lg overflow-hidden shadow-2xl animate-in fade-in duration-150">
           <div className="absolute inset-0 cyber-grid opacity-30" />
           <div
             className="absolute w-2 h-2 rounded-full bg-cyan-400 ring-2 ring-cyan-300 animate-ping"

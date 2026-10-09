@@ -7,22 +7,29 @@ import {
   Crosshair,
   Wifi,
   Layers,
-  ChevronRight,
   Flame,
-  Radio,
-  Bomb,
-  Repeat,
   Compass,
   Award,
   Globe,
   Sliders,
   CheckCircle2,
-  AlertTriangle,
   Trophy,
   User,
   Swords,
   Smartphone,
-  Lock,
+  ShoppingBag,
+  Bot,
+  Crown,
+  Clock,
+  Skull,
+  Rocket,
+  Palette,
+  Star,
+  Activity,
+  ChevronRight,
+  ShieldAlert,
+  FlameKindling,
+  History,
 } from 'lucide-react';
 import { Language } from '../data/translations.ts';
 import { MODIFIER_METAS } from '../data/weapons.ts';
@@ -33,10 +40,19 @@ interface WhatsNewModalProps {
   onToggleLang?: () => void;
 }
 
-type TabType = 'overview' | 'boss_raid' | 'accounts' | 'hud_scale' | 'weapons' | 'modifiers' | 'combat';
+type TabType =
+  | 'overview_07'
+  | 'cyber_shop'
+  | 'boss_overhaul'
+  | 'mobile_edition'
+  | 'leaderboard_rp'
+  | 'animations'
+  | 'weapons'
+  | 'modifiers'
+  | 'archive_06';
 
 export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onToggleLang }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>('overview_07');
   const [currentLang, setCurrentLang] = useState<Language>(lang);
 
   const isRu = currentLang === 'ru';
@@ -61,14 +77,16 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="font-orbitron font-black text-sm sm:text-lg text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-pink-400">
-                  {isRu ? 'ЧТО НОВОГО? • BETA 0.6: «ПРОБУЖДЕНИЕ ТИТАНА»' : "WHAT'S NEW? • BETA 0.6: TITAN'S AWAKENING"}
+                  {isRu ? 'ЧТО НОВОГО? • BETA 0.7: «ТИТАНЫ КИБЕРПАНКА»' : "WHAT'S NEW? • BETA 0.7: TITANS OF CYBERPUNK"}
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-pink-500/20 text-pink-300 border border-pink-500/40 animate-pulse">
-                  {isRu ? 'ОБНОВЛЕНИЕ 0.6' : 'UPDATE 0.6'}
+                  {isRu ? 'ОБНОВЛЕНИЕ 0.7' : 'UPDATE 0.7'}
                 </span>
               </div>
               <p className="text-[11px] font-mono text-cyan-400/80">
-                {isRu ? 'Рейд на Босса • Аккаунты Пилотов & Зал Славы • Настройка HUD Scale • Сетевой код и Мобильный скролл' : 'Titan Boss Raid • Pilot Accounts & Hall of Fame • HUD Scale Settings • Fast Netcode & Mobile Scroll'}
+                {isRu
+                  ? '25+ Кораблей • Шляпы & Обвесы • Мобильная Версия • Усиленный Босс (6 мин) & Мини-НПС • Зал Славы'
+                  : '25+ Ships • Hats & Accessories • Dedicated Mobile Edition • 6-Min Boss & Mini-NPCs • Leaderboard RP'}
               </p>
             </div>
           </div>
@@ -97,51 +115,75 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
         {/* Navigation Tabs */}
         <div className="flex items-center space-x-1 px-3 sm:px-6 py-2 border-b border-slate-800 bg-slate-950/40 overflow-x-auto no-scrollbar">
           <button
-            onClick={() => setActiveTab('overview')}
+            onClick={() => setActiveTab('overview_07')}
             className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeTab === 'overview'
+              activeTab === 'overview_07'
                 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
             <Compass className="w-3.5 h-3.5" />
-            <span>{isRu ? 'Обзор 0.6' : 'Overview 0.6'}</span>
+            <span>{isRu ? '🚀 Обзор 0.7' : '🚀 Overview 0.7'}</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('boss_raid')}
+            onClick={() => setActiveTab('cyber_shop')}
             className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeTab === 'boss_raid'
+              activeTab === 'cyber_shop'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
+            <span>{isRu ? '🛒 Кибер-Магазин (25+)' : '🛒 Cyber Shop (25+)'}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('boss_overhaul')}
+            className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
+              activeTab === 'boss_overhaul'
                 ? 'bg-rose-500/20 text-rose-300 border border-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.3)]'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
             <Swords className="w-3.5 h-3.5 text-rose-400" />
-            <span>{isRu ? 'Рейд на Босса' : 'Titan Boss Raid'}</span>
+            <span>{isRu ? '👾 Босс (6 мин) & НПС' : '👾 Boss (6m) & NPCs'}</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('accounts')}
+            onClick={() => setActiveTab('mobile_edition')}
             className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeTab === 'accounts'
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
+              activeTab === 'mobile_edition'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
-            <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            <span>{isRu ? 'Аккаунты & Зал Славы' : 'Accounts & Hall of Fame'}</span>
+            <Smartphone className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{isRu ? '📱 Мобильная Версия' : '📱 Mobile Edition'}</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('hud_scale')}
+            onClick={() => setActiveTab('leaderboard_rp')}
             className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeTab === 'hud_scale'
-                ? 'bg-sky-500/20 text-sky-300 border border-sky-400 shadow-[0_0_10px_rgba(14,165,233,0.3)]'
+              activeTab === 'leaderboard_rp'
+                ? 'bg-purple-500/20 text-purple-300 border border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
-            <Sliders className="w-3.5 h-3.5 text-sky-400" />
-            <span>{isRu ? 'Масштаб HUD & Пинг' : 'HUD Scale & Ping'}</span>
+            <Trophy className="w-3.5 h-3.5 text-purple-400" />
+            <span>{isRu ? '🏆 Зал Славы & RP' : '🏆 Hall of Fame & RP'}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('animations')}
+            className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
+              activeTab === 'animations'
+                ? 'bg-pink-500/20 text-pink-300 border border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.3)]'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
+            <span>{isRu ? '✨ Плавные Анимации' : '✨ Fluid Animations'}</span>
           </button>
 
           <button
@@ -153,156 +195,188 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
             }`}
           >
             <Zap className="w-3.5 h-3.5 text-cyan-400" />
-            <span>{isRu ? '9 Новых Пушек' : '9 New Weapons'}</span>
+            <span>{isRu ? '9 Пушек' : '9 Weapons'}</span>
           </button>
 
           <button
             onClick={() => setActiveTab('modifiers')}
             className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
               activeTab === 'modifiers'
-                ? 'bg-purple-500/20 text-purple-300 border border-purple-400 shadow-[0_0_10px_rgba(168,85,247,0.3)]'
+                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.3)]'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
-            <Layers className="w-3.5 h-3.5 text-purple-400" />
-            <span>{isRu ? '14 Модификаторов' : '14 Modifiers'}</span>
+            <Layers className="w-3.5 h-3.5 text-indigo-400" />
+            <span>{isRu ? '14 Модов' : '14 Modifiers'}</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('combat')}
+            onClick={() => setActiveTab('archive_06')}
             className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeTab === 'combat'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              activeTab === 'archive_06'
+                ? 'bg-slate-700/40 text-slate-200 border border-slate-500 shadow-sm'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40'
             }`}
           >
-            <Shield className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{isRu ? 'Щиты и Механики' : 'Shields & Mechanics'}</span>
+            <History className="w-3.5 h-3.5" />
+            <span>{isRu ? 'Архив (0.6)' : 'Archive (0.6)'}</span>
           </button>
         </div>
 
         {/* Tab Content Body */}
         <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 text-slate-200">
-          {/* TAB 1: OVERVIEW */}
-          {activeTab === 'overview' && (
+          {/* TAB 1: OVERVIEW 0.7 */}
+          {activeTab === 'overview_07' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 via-purple-950/30 to-pink-950/40 border border-cyan-500/40 shadow-lg">
-                <h3 className="text-base sm:text-lg font-orbitron font-bold text-cyan-300 mb-2 flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-cyan-400" />
-                  {isRu ? 'Добро пожаловать в Beta 0.6: Пробуждение Титана!' : "Welcome to Beta 0.6: Titan's Awakening!"}
-                </h3>
+              <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/50 via-purple-950/40 to-pink-950/40 border border-cyan-500/40 shadow-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-5 h-5 text-cyan-400 animate-pulse" />
+                  <h3 className="text-base sm:text-lg font-orbitron font-bold text-cyan-300">
+                    {isRu
+                      ? 'Добро пожаловать в Beta 0.7: «Титаны Киберпанка»!'
+                      : 'Welcome to Beta 0.7: Titans of Cyberpunk!'}
+                  </h3>
+                </div>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                   {isRu
-                    ? 'Обновление 0.6 выводит CyberArena на принципиально новый уровень: добавлен эпический PvE-рейд на гигантского босса, полноценная серверная система аккаунтов с сохранением всего инвентаря и монет, глобальный Зал Славы с боевым рейтингом (RP), точная настройка масштаба интерфейса (HUD Scale) и полная ликвидация сетевого джиттера!'
-                    : 'Update 0.6 elevates CyberArena to a new tier: an epic co-op PvE Titan boss raid, server-authoritative account system syncing all coins and inventory, global Hall of Fame with MMR rating (RP), adjustable in-game HUD Scale, and zero-jitter netcode!'}
+                    ? 'Обновление Beta 0.7 — крупнейший контентный апдейт в истории CyberArena! Вас ждет колоссально расширенный Кибер-Магазин (25+ кораблей, 18+ шляп, 12+ аксессуаров, 16+ шлейфов), выделенная Мобильная Версия CyberArena с продуманным сенсорным управлением, глубокая переработка режима «Битва с Боссом» с 6-минутным таймером, мини-НПС дронами и умным ИИ союзников, плавные кинематические анимации и обновленный Зал Славы с RP-рейтингом.'
+                    : 'Beta 0.7 is the biggest content leap in CyberArena history! Enjoy a massively expanded Cyber Store (25+ ships, 18+ hats, 12+ accessories, 16+ trails), dedicated Mobile Edition with ergonomic touch virtual controls, Boss Raid overhaul featuring 6-minute timer, defensive mini-NPC drones, intelligent friendly AI bot targeting, fluid kinematic animations, and the competitive Hall of Fame.'}
                 </p>
               </div>
 
-              {/* 4 Core Pillars of 0.6 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-rose-500/30">
+              {/* 6 Key Pillars of 0.7 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-amber-500/30 hover:border-amber-400/60 transition-all">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 mb-2.5">
+                    <ShoppingBag className="w-4 h-4" />
+                  </div>
+                  <h4 className="font-orbitron font-bold text-xs text-amber-300 mb-1">
+                    {isRu ? '1. Кибер-Магазин 2.0 (25+ Кораблей)' : '1. Expanded Cyber Store (25+ Ships)'}
+                  </h4>
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    {isRu
+                      ? '25 уникальных корпусов кораблей, 18 шляп, 12 аксессуаров, 16 неоновых шлейфов и 11 титулов с интерактивным предпросмотром!'
+                      : '25 custom vessel hulls, 18 hats, 12 accessories, 16 glowing trails, and 11 pilot titles with interactive 3D preview!'}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-rose-500/30 hover:border-rose-400/60 transition-all">
                   <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 mb-2.5">
                     <Swords className="w-4 h-4" />
                   </div>
                   <h4 className="font-orbitron font-bold text-xs text-rose-300 mb-1">
-                    {isRu ? '1. Рейд на Босса' : '1. Titan Boss Raid'}
+                    {isRu ? '2. Босс 6 Минут & Мини-НПС' : '2. 6-Min Boss & Mini-NPCs'}
                   </h4>
                   <p className="text-[11px] text-slate-400 leading-normal">
                     {isRu
-                      ? 'Все пилоты объединяются против гигантского дредноута «Титан Пустоты» на арене 4800x4800 с 3 смертоносными фазами!'
-                      : 'All pilots co-op vs a giant "Void Titan" dreadnought on a massive 4800x4800 arena with 3 deadly combat phases!'}
+                      ? 'Таймер рейда увеличен до 6 минут (360 сек). Босс призывает защитных мини-НПС («Стражи Пустоты»). ИИ союзников стреляет строго по боссу!'
+                      : 'Match timer increased to 6 minutes (360s). Boss summons escort mini-NPC drones. Friendly bots shoot exclusively at Boss & minions!'}
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-amber-500/30">
-                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 mb-2.5">
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-emerald-500/30 hover:border-emerald-400/60 transition-all">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-2.5">
+                    <Smartphone className="w-4 h-4" />
+                  </div>
+                  <h4 className="font-orbitron font-bold text-xs text-emerald-300 mb-1">
+                    {isRu ? '3. Выделенная Мобильная Версия' : '3. Dedicated Mobile Edition'}
+                  </h4>
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    {isRu
+                      ? 'Авто-определение мобильных устройств! Сенсорный стик перемещения слева, триггер прицела справа, Turbo Dash и компактный мобильный HUD.'
+                      : 'Auto-detected mobile mode! Floating move joystick on left, fire stick on right, one-touch Dash, and ergonomic clean HUD.'}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-pink-500/30 hover:border-pink-400/60 transition-all">
+                  <div className="w-8 h-8 rounded-lg bg-pink-500/10 flex items-center justify-center text-pink-400 mb-2.5">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <h4 className="font-orbitron font-bold text-xs text-pink-300 mb-1">
+                    {isRu ? '4. Плавные Анимации Пилотов' : '4. Fluid Ship Animations'}
+                  </h4>
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    {isRu
+                      ? 'Кинематическое сглаживание поворота корпуса, пульсирующие энергощиты, частицы сопел при ускорении и прорисовка скинов в бою.'
+                      : 'Angular kinematic turning damping, pulsating kinetic energy shields, dynamic thruster flame particles, and live skin rendering.'}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-purple-500/30 hover:border-purple-400/60 transition-all">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 mb-2.5">
                     <Trophy className="w-4 h-4" />
                   </div>
-                  <h4 className="font-orbitron font-bold text-xs text-amber-300 mb-1">
-                    {isRu ? '2. Аккаунты & Зал Славы' : '2. Accounts & Ladder'}
+                  <h4 className="font-orbitron font-bold text-xs text-purple-300 mb-1">
+                    {isRu ? '5. Зал Славы, RP & Профили' : '5. Leaderboard, RP & Profiles'}
                   </h4>
                   <p className="text-[11px] text-slate-400 leading-normal">
                     {isRu
-                      ? 'Система Login/Password: вечное сохранение монет, скинов, статистики K/D и соревновательный рейтинг (RP) от Рекрута до Apex!'
-                      : 'Login & Password accounts: persistent coins, cosmetics, K/D record and competitive RP ranking from Recruit to Apex!'}
+                      ? '6 ранговых лиг (от Рекрута до Apex Dominator), начисление RP за матчи и босса, детальные карточки профилей с титулами и скинами.'
+                      : '6 rank tiers from Recruit to Apex Dominator, RP earned in PvP and boss matches, detailed profile cards with equipped items.'}
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-sky-500/30">
+                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-sky-500/30 hover:border-sky-400/60 transition-all">
                   <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-400 mb-2.5">
                     <Sliders className="w-4 h-4" />
                   </div>
                   <h4 className="font-orbitron font-bold text-xs text-sky-300 mb-1">
-                    {isRu ? '3. HUD Scale & Настройки' : '3. HUD Scale Slider'}
+                    {isRu ? '6. Улучшения Меню & Лобби' : '6. Menu & Lobby Polish'}
                   </h4>
                   <p className="text-[11px] text-slate-400 leading-normal">
                     {isRu
-                      ? 'Вкладка масштабирования от 65% до 125%, пресеты и доступ к настройкам прямо во время боя без выхода из игры!'
-                      : 'Smooth UI scale from 65% to 125%, presets and in-match settings button without leaving combat!'}
-                  </p>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-slate-950/70 border border-emerald-500/30">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400 mb-2.5">
-                    <Wifi className="w-4 h-4" />
-                  </div>
-                  <h4 className="font-orbitron font-bold text-xs text-emerald-300 mb-1">
-                    {isRu ? '4. Низкий Пинг & Скролл' : '4. Fast Ping & Mobile'}
-                  </h4>
-                  <p className="text-[11px] text-slate-400 leading-normal">
-                    {isRu
-                      ? 'Ускоренный опрос пинга (800мс), TCP NoDelay без буферных задержек и плавный мобильный скролл меню и лобби.'
-                      : '800ms fast ping probe, zero-buffer TCP NoDelay sockets, and responsive vertical mobile touch scroll in all menus.'}
+                      ? 'Быстрое переключение режима комнаты хостом, плавный мобильный скролл всех панелей, ускоренный опрос пинга и стабильный FPS.'
+                      : 'Host mode switcher, smooth mobile vertical scrolling, fast 800ms ping telemetry, and locked 60 FPS performance.'}
                   </p>
                 </div>
               </div>
 
-              {/* Summary of What's in 0.6 */}
+              {/* Summary checklist */}
               <div className="p-3.5 rounded-xl bg-slate-950/50 border border-slate-800 space-y-2">
                 <h4 className="font-orbitron font-bold text-xs text-cyan-300 uppercase tracking-wider">
-                  {isRu ? 'Главные нововведения версии Beta 0.6:' : 'Key Additions in Beta 0.6:'}
+                  {isRu ? 'Чеклист главных новинок Beta 0.7:' : 'Beta 0.7 Highlights Checklist:'}
                 </h4>
                 <ul className="text-xs text-slate-300 space-y-1.5">
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     <span>
-                      <strong>{isRu ? 'PvE Режим «Рейд на Босса»' : 'PvE Co-Op "Boss Raid" Mode'}</strong>{' '}
-                      — {isRu ? 'Гигантский флагман Титан Пустоты со щитами, фазами и самонаводящимися торпедами. Огонь по союзникам отключен!' : 'Giant Void Titan dreadnought with 3 phases, shields and torpedo barrages. Friendly fire disabled!'}
+                      <strong>{isRu ? '25+ Кораблей в Кибер-Магазине' : '25+ Ships in Cyber Store'}</strong>{' '}
+                      — {isRu ? 'От тяжелых дредноутов до юрких перехватчиков и футуристических кораблей предтеч.' : 'From heavy dreadnoughts and nimble interceptors to futuristic precursor vessels.'}
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     <span>
-                      <strong>{isRu ? 'Личный кабинет и сохранение прогресса' : 'Pilot Accounts & Progress Persistence'}</strong>{' '}
-                      — {isRu ? 'Создай аккаунт с логином и паролем. Все монеты, экипированные скины кораблей, шляпы и цвета надежно сохраняются.' : 'Register/login with credentials. Coins, ship models, hats, and trail effects are saved permanently.'}
+                      <strong>{isRu ? 'Категория «Аксессуары» (12 шт) и «Шляпы» (18 шт)' : 'Accessories & Hats Categories'}</strong>{' '}
+                      — {isRu ? 'Кибер-крылья, орбитальные дроны, плечевые турели, короны, визоры и шлемы.' : 'Cyber wings, orbiting drones, shoulder turrets, crowns, visors, and battle helms.'}
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     <span>
-                      <strong>{isRu ? 'Зал Славы и Боевой Рейтинг (RP)' : 'Hall of Fame & RP Rating Ladder'}</strong>{' '}
-                      — {isRu ? 'Зарабатывай RP в победах и поднимайся в рангах от Рекрута до Абсолюта (Apex Dominator)!' : 'Earn RP in PvP victories and rank up from Recruit to Apex Dominator!'}
+                      <strong>{isRu ? 'Таймер Босса увеличен до 6 минут (360 сек)' : 'Boss Timer Increased to 6 Minutes (360s)'}</strong>{' '}
+                      — {isRu ? 'Теперь у пилотов достаточно времени, чтобы пробить щиты Титана и зачистить волны миньонов!' : 'Gives squads enough tactical runway to melt Titan shields and clear minion escorts!'}
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     <span>
-                      <strong>{isRu ? 'Исправленная вкладка масштаба HUD' : 'Fixed & Polished HUD Scale Tab'}</strong>{' '}
-                      — {isRu ? 'Масштабируй радар, полоски здоровья и контролы под любой экран. Доступна кнопка настроек в правом верхнем углу в бою.' : 'Scale radar, health bars and touch controls for any screen. In-game settings button now active in top-right!'}
+                      <strong>{isRu ? 'Мини-НПС «Стражи Пустоты»' : 'Mini-NPC "Void Sentinels"'}</strong>{' '}
+                      — {isRu ? 'Босс призывает автономных защитных дронов, которые отвлекают огонь игроков и атакуют плазмой.' : 'Boss summons defensive drones that swarm players and fire plasma rounds.'}
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     <span>
-                      <strong>{isRu ? 'Адаптивный мобильный скролл' : 'Smooth Mobile Menu Scroll'}</strong>{' '}
-                      — {isRu ? 'Меню и лобби легко прокручиваются пальцем, давая доступ ко всем 14 модификаторам, билдам и картам на любом смартфоне.' : 'Menus and lobby rooms scroll vertically, giving effortless access to all 14 modifiers and maps on phones.'}
+                      <strong>{isRu ? 'Умный ИИ Ботов-Союзников' : 'Smart Friendly AI Bot Targeting'}</strong>{' '}
+                      — {isRu ? 'Боты в рейде больше не стреляют по союзным пилотам, а фокусят огонь исключительно на Боссе и мини-НПС!' : 'Bots never friendly-fire in raid mode, coordinating fire strictly at Boss & minions!'}
                     </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                     <span>
-                      <strong>{isRu ? 'Селектор режимов игры в лобби' : 'Lobby Game Mode Switcher'}</strong>{' '}
-                      — {isRu ? 'Хост может мгновенно менять режим комнаты: Каждый сам за себя (FFA), Командный бой (TDM), Царь Горы (KOTH) или Рейд на Босса (Boss Raid)!' : 'Room host can instantly toggle game modes: Free For All, Team Deathmatch, King of the Hill, or Titan Boss Raid!'}
+                      <strong>{isRu ? 'Мобильная Версия CyberArena' : 'Dedicated CyberArena Mobile Edition'}</strong>{' '}
+                      — {isRu ? 'Полная адаптация под телефоны: стики управления, триггеры огня и рывка, масштабирование под тач-экраны.' : 'Tailored mobile gameplay with dual virtual joysticks, responsive dash, and touch-optimized UI.'}
                     </span>
                   </li>
                 </ul>
@@ -310,94 +384,375 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
             </div>
           )}
 
-          {/* TAB 2: BOSS RAID */}
-          {activeTab === 'boss_raid' && (
+          {/* TAB 2: CYBER SHOP 2.0 */}
+          {activeTab === 'cyber_shop' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-amber-950/40 via-yellow-950/30 to-slate-900 border border-amber-500/40 shadow-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <ShoppingBag className="w-5 h-5 text-amber-400" />
+                  <h3 className="font-orbitron font-bold text-sm sm:text-base text-amber-300">
+                    {isRu
+                      ? 'КИБЕР-МАГАЗИН 2.0: 25+ КОРАБЛЕЙ, ШЛЯПЫ, ОБВЕСЫ И ШЛЕЙФЫ'
+                      : 'CYBER STORE 2.0: 25+ SHIPS, HATS, ACCESSORIES & TRAILS'}
+                  </h3>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  {isRu
+                    ? 'Кибер-Магазин преобразился! Теперь в вашем распоряжении 25 уникальных корпусов кораблей со светящимися элементами, отдельная категория «Аксессуары» (12 штук), 18 классных головных уборов, 16 завораживающих неоновых шлейфов и 11 боевых титулов. Все предметы имеют интерактивный предпросмотр перед покупкой.'
+                    : 'The Cyber Store has been massively upgraded! Choose from 25 distinctive starship hulls with neon energy trims, dedicated "Accessories" category (12 items), 18 stylish hats, 16 mesmerizing thruster trails, and 11 pilot titles with interactive previews.'}
+                </p>
+              </div>
+
+              {/* Category Breakdown */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* 25 Ships */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-cyan-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-orbitron font-bold text-xs text-cyan-300 flex items-center gap-1.5">
+                      <Rocket className="w-4 h-4 text-cyan-400" />
+                      {isRu ? '25 Корпусов Кораблей' : '25 Ship Hulls'}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/40">
+                      25 MODELS
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mb-2 leading-relaxed">
+                    {isRu
+                      ? 'Каждый корабль отрисовывается в бою с уникальной геометрией, неоновыми соплами и световыми контурами:'
+                      : 'Every vessel is rendered in live combat with custom vector geometry, thruster nozzles, and neon highlights:'}
+                  </p>
+                  <div className="flex flex-wrap gap-1 text-[10px] font-mono">
+                    {[
+                      'Phantom',
+                      'Dragon',
+                      'Raven',
+                      'Dreadnought',
+                      'UFO',
+                      'Phoenix',
+                      'Viper',
+                      'Specter',
+                      'Titan',
+                      'Valkyrie',
+                      'Interceptor',
+                      'Nebula',
+                      'Hyperion',
+                      'Chronos',
+                      'Eclipse',
+                      'Aurora',
+                      'Tempest',
+                      'Nemesis',
+                      'Apex',
+                      'Void Walker',
+                      'Pulsar',
+                      'Cyber Core',
+                      'Zenith',
+                      'Infinity',
+                      'Solaris',
+                    ].map((ship) => (
+                      <span
+                        key={ship}
+                        className="px-1.5 py-0.5 rounded bg-slate-900 border border-cyan-500/20 text-slate-300"
+                      >
+                        {ship}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 18 Hats & Headgear */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-amber-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-orbitron font-bold text-xs text-amber-300 flex items-center gap-1.5">
+                      <Crown className="w-4 h-4 text-amber-400" />
+                      {isRu ? '18+ Шляп & Головных Уборов' : '18+ Hats & Helmets'}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-400/40">
+                      18 HATS
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mb-2 leading-relaxed">
+                    {isRu
+                      ? 'Отображаются поверх корпуса вашего корабля во время матча:'
+                      : 'Rendered directly on top of your starship cockpit in live matches:'}
+                  </p>
+                  <div className="flex flex-wrap gap-1 text-[10px] font-mono">
+                    {[
+                      '👑 Корона',
+                      '🥽 Кибер-Визор',
+                      '😈 Рога Демона',
+                      '😇 Нимб',
+                      '⚔️ Шлем Самурая',
+                      '🎧 Наушники',
+                      '🎩 Цилиндр',
+                      '🪖 Берет',
+                      '🛡️ Викинг',
+                      '🏴‍☠️ Пират',
+                      '🎸 Ирокез',
+                      '👹 Маска Они',
+                      '🤠 Ковбой',
+                      '👨‍🚀 Астронавт',
+                      '🧙 Маг',
+                      '🏯 Сёгун',
+                      '💎 Диадема',
+                      '🏆 Золотой Шлем',
+                    ].map((hat) => (
+                      <span
+                        key={hat}
+                        className="px-1.5 py-0.5 rounded bg-slate-900 border border-amber-500/20 text-slate-300"
+                      >
+                        {hat}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 12 Accessories */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-purple-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-orbitron font-bold text-xs text-purple-300 flex items-center gap-1.5">
+                      <Star className="w-4 h-4 text-purple-400" />
+                      {isRu ? '12+ Красивых Аксессуаров' : '12+ Vessel Accessories'}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-400/40">
+                      12 ACCS
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mb-2 leading-relaxed">
+                    {isRu
+                      ? 'Экипируются на борта и крылья, добавляя визуальный статус:'
+                      : 'Equipped onto vessel wings & hull flanks, adding prestige aura:'}
+                  </p>
+                  <div className="flex flex-wrap gap-1 text-[10px] font-mono">
+                    {[
+                      '🪽 Кибер-Крылья',
+                      '🔫 Плечевые Турели',
+                      '🛡️ Генератор Щита',
+                      '✨ Плазменная Аура',
+                      '🐉 Хвост Дракона',
+                      '⚡ Трастерные Плавники',
+                      '🛰️ Орбитальный Дрон',
+                      '🧣 Квантовый Плащ',
+                      '💠 Голо-Эмблема',
+                      '🐙 Щупальца Пустоты',
+                      '⭐ Звездное Ядро',
+                      '📦 Матричный Куб',
+                    ].map((acc) => (
+                      <span
+                        key={acc}
+                        className="px-1.5 py-0.5 rounded bg-slate-900 border border-purple-500/20 text-slate-300"
+                      >
+                        {acc}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 16 Trails */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-pink-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-orbitron font-bold text-xs text-pink-300 flex items-center gap-1.5">
+                      <Flame className="w-4 h-4 text-pink-400" />
+                      {isRu ? '16+ Неоновых Шлейфов' : '16+ Glowing Trails'}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-pink-500/20 text-pink-300 border border-pink-400/40">
+                      16 TRAILS
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mb-2 leading-relaxed">
+                    {isRu
+                      ? 'Оставляют завораживающий след позади сопел при полете и форсаже (Dash):'
+                      : 'Leaves mesmerizing particle contrail behind your thrusters during flight & Dash:'}
+                  </p>
+                  <div className="flex flex-wrap gap-1 text-[10px] font-mono">
+                    {[
+                      '🔥 Огонь',
+                      '⚡ Молния',
+                      '🌈 Радуга',
+                      '🟢 Матрица',
+                      '🟣 Плазма',
+                      '☀️ Солнечный',
+                      '🌌 Пустота',
+                      '✨ Золотой',
+                      '🫧 Пузыри',
+                      '☣️ Токсичный',
+                      '💠 Кибер-Искры',
+                      '⭐ Космо-Пыль',
+                      '🌸 Неон-Пинк',
+                      '❄️ Мороз',
+                      '👾 Глитч',
+                      '🌌 Сев. Сияние',
+                    ].map((tr) => (
+                      <span
+                        key={tr}
+                        className="px-1.5 py-0.5 rounded bg-slate-900 border border-pink-500/20 text-slate-300"
+                      >
+                        {tr}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 3: BOSS OVERHAUL */}
+          {activeTab === 'boss_overhaul' && (
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-gradient-to-r from-red-950/40 via-purple-950/40 to-slate-900 border border-rose-500/40 shadow-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <Swords className="w-5 h-5 text-rose-400" />
                   <h3 className="font-orbitron font-bold text-sm sm:text-base text-rose-300">
-                    {isRu ? 'РЕЙД НА БОССА: ТИТАН ПУСТОТЫ (PvE КООПЕРАТИВ)' : 'BOSS RAID: VOID TITAN (PvE CO-OP)'}
+                    {isRu
+                      ? 'ПРОРАБОТКА РЕЖИМА «БИТВА С БОССОМ» (BETA 0.7 OVERHAUL)'
+                      : 'BOSS RAID OVERHAUL (BETA 0.7)'}
                   </h3>
                 </div>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                   {isRu
-                    ? 'В режиме «Рейд на Босса» игроки больше не сражаются друг против друга — огонь по союзникам отключен! Ваша общая задача — скоординировать действия и уничтожить колоссальный флагманский корабль «Титан Пустоты» на масштабной карте «Арена Титана» (4800x4800 px).'
-                    : 'In Boss Raid mode, friendly fire between players is disabled! Your squad must coordinate fire to eliminate the colossal "Void Titan" flagship on the massive "Titan Arena" map (4800x4800 px).'}
+                    ? 'Режим «Рейд на Босса» получил масштабное обновление по вашим пожеланиям! Время битвы увеличено до 6 минут (360 сек), Босс стал значительно сильнее и обзавелся эскортом маневренных мини-НПС дронов, а искусственный интеллект союзных ботов переработан — они больше никогда не стреляют по игрокам, а координированно фокусят Босса и дронов!'
+                    : 'Boss Raid received a monumental overhaul! Match timer extended to 6 full minutes (360s), Boss is reinforced with more resilience and summons escort mini-NPC drones, and friendly AI bot programming has been updated to never fire at teammates, focusing exclusively on the Boss and minions!'}
+                </p>
+              </div>
+
+              {/* 4 Pillars of Boss Overhaul */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-rose-500/40">
+                  <div className="flex items-center gap-2 mb-1.5 text-rose-300 font-orbitron font-bold text-xs">
+                    <Clock className="w-4 h-4 text-rose-400" />
+                    <span>{isRu ? 'Таймер 6 Минут (360 секунд)' : '6-Minute Match Timer (360s)'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    {isRu
+                      ? 'Вместо 5 минут (300 сек) таймер продлен до 6 минут. Это дает пилотам достаточно времени для позиционной координации, поэтапного снятия щитов и уничтожения волн свиты босса.'
+                      : 'Extended from 5 minutes (300s) to 6 full minutes. Provides squads ample tactical runway to break shield stages, kite torpedoes, and eliminate minion waves.'}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-purple-500/40">
+                  <div className="flex items-center gap-2 mb-1.5 text-purple-300 font-orbitron font-bold text-xs">
+                    <Bot className="w-4 h-4 text-purple-400" />
+                    <span>{isRu ? 'Мини-НПС: Стражи Пустоты' : 'Mini-NPC: Void Sentinel Drones'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    {isRu
+                      ? 'Босс регулярно выпускает эскорт из маневренных дронов («Стражи Пустоты»). Дроны окружают игроков, отвлекают огонь и ведут плазменный обстрел. Уничтожайте их, чтобы спасти товарищей!'
+                      : 'Boss periodically deploys agile escort drones ("Void Sentinels"). Drones circle pilots, intercept rockets, and fire plasma bursts. Cleanse them quickly to protect squadmates!'}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-emerald-500/40">
+                  <div className="flex items-center gap-2 mb-1.5 text-emerald-300 font-orbitron font-bold text-xs">
+                    <Shield className="w-4 h-4 text-emerald-400" />
+                    <span>{isRu ? 'Умный ИИ Ботов-Союзников' : 'Intelligent Friendly AI Bots'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    {isRu
+                      ? 'В режиме Boss Raid боты-союзники полностью исключили огонь по игрокам! Их алгоритмы наведения заблокированы на Боссе и мини-НПС. Они активно снимают щиты и прикрывают вас.'
+                      : 'In Boss Raid mode, friendly AI bots never fire towards player teammates. Their target acquisition locks onto the Boss and mini-NPC drones, acting as genuine battle partners.'}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-amber-500/40">
+                  <div className="flex items-center gap-2 mb-1.5 text-amber-300 font-orbitron font-bold text-xs">
+                    <Skull className="w-4 h-4 text-amber-400" />
+                    <span>{isRu ? 'Усиленный Титан Пустоты' : 'Reinforced Void Titan'}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    {isRu
+                      ? 'Запас прочности и фазовых щитов Босса увеличен. Во 2-й фазе выпускаются 4 самонаводящиеся ракеты, а в 3-й фазе — 360° гипер-нова из 16 снарядов в режиме перегрузки ярости!'
+                      : 'Boss hull and shield capacity reinforced. Phase 2 fires 4 homing torpedoes, while Phase 3 triggers the 360-degree 16-bullet hyper-nova reactor discharge!'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: MOBILE EDITION */}
+          {activeTab === 'mobile_edition' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-emerald-950/40 via-teal-950/40 to-slate-900 border border-emerald-500/40 shadow-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Smartphone className="w-5 h-5 text-emerald-400" />
+                  <h3 className="font-orbitron font-bold text-sm sm:text-base text-emerald-300">
+                    {isRu
+                      ? 'МОБИЛЬНАЯ ВЕРСИЯ CYBERARENA: УДОБСТВО ДЛЯ СМАРТФОНОВ'
+                      : 'CYBERARENA MOBILE EDITION: BUILT FOR TOUCH'}
+                  </h3>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  {isRu
+                    ? 'Если вы играете с телефона или планшета, игра автоматически активирует специализированную Мобильную Версию! Она коренным образом отличается от ПК-версии: все элементы оптимизированы под сенсорный ввод, пальцы не закрывают обзор, а виртуальные контролы дают точность профессионального геймпада.'
+                    : 'When you play from a phone or tablet, the game automatically boots into dedicated Mobile Edition! Distinct from the desktop version, all UI components are tailored for touch interaction, thumb occlusions are avoided, and virtual controls offer controller-grade precision.'}
                 </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                  <div className="text-amber-400 font-orbitron font-bold text-xs mb-1">
-                    {isRu ? '💥 Фаза 1 (100% - 66% HP)' : '💥 Phase 1 (100% - 66% HP)'}
-                  </div>
-                  <h5 className="font-orbitron text-xs text-white mb-1.5">
-                    {isRu ? 'Плазменный Залп' : 'Plasma Salvo'}
-                  </h5>
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-emerald-500/30">
+                  <h4 className="font-orbitron font-bold text-xs text-emerald-300 mb-1 flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5" />
+                    {isRu ? 'Плавающий Аналоговый Стик' : 'Floating Move Joystick'}
+                  </h4>
                   <p className="text-[11px] text-slate-400 leading-normal">
                     {isRu
-                      ? 'Босс ведет огонь сдвоенными тяжелыми плазменными турелями. Держите дистанцию и сбивайте энергощит!'
-                      : 'Boss fires dual heavy plasma turrets towards closest pilots. Keep distance and melt shields!'}
+                      ? 'Левая половина экрана отведена под перемещение. Стик динамически центрируется в точке первого касания пальца для комфорта кисти.'
+                      : 'Left screen area controls ship thrust. The joystick dynamically anchors where your thumb touches for fatigue-free control.'}
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                  <div className="text-purple-400 font-orbitron font-bold text-xs mb-1">
-                    {isRu ? '🛡️ Фаза 2 (66% - 33% HP)' : '🛡️ Phase 2 (66% - 33% HP)'}
-                  </div>
-                  <h5 className="font-orbitron text-xs text-white mb-1.5">
-                    {isRu ? 'Самонаводящиеся Торпеды' : 'Homing Torpedoes'}
-                  </h5>
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-cyan-500/30">
+                  <h4 className="font-orbitron font-bold text-xs text-cyan-300 mb-1 flex items-center gap-1.5">
+                    <Crosshair className="w-3.5 h-3.5" />
+                    {isRu ? 'Сенсорный Прицел & Огонь' : 'Touch Aim & Auto-Fire'}
+                  </h4>
                   <p className="text-[11px] text-slate-400 leading-normal">
                     {isRu
-                      ? 'Выпуск 4 тяжелых торпед, преследующих игроков. Используйте Perfect Dash или препятствия, чтобы срезать ракеты!'
-                      : 'Fires 4 explosive homing missiles. Use obstacles or Turbo Dash timing to evade lock-on!'}
+                      ? 'Правая зона экрана управляет направлением стрельбы. Отклоняйте стик в сторону врага — огонь открывается мгновенно!'
+                      : 'Right screen controls aim direction. Pointing the aim stick automatically triggers high-cadence cannon fire towards targets!'}
                   </p>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-rose-500/30">
-                  <div className="text-rose-400 font-orbitron font-bold text-xs mb-1">
-                    {isRu ? '⚡ Фаза 3 (33% - 0% HP)' : '⚡ Phase 3 (33% - 0% HP)'}
-                  </div>
-                  <h5 className="font-orbitron text-xs text-white mb-1.5">
-                    {isRu ? 'Ярость: Гипер-Нова' : 'Enrage: Hyper Nova'}
-                  </h5>
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-amber-500/30">
+                  <h4 className="font-orbitron font-bold text-xs text-amber-300 mb-1 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" />
+                    {isRu ? 'Быстрый Dash & Оружие' : 'Quick Dash & Weapon Swap'}
+                  </h4>
                   <p className="text-[11px] text-slate-400 leading-normal">
                     {isRu
-                      ? 'Босс перегружает ядро и выпускает круговой шквал из 16 снарядов на 360 градусов! Требуется максимальная реакция.'
-                      : 'Reactor overcharges into a rotating 360-degree 16-bullet barrage! Demands peak evasive maneuvering.'}
+                      ? 'Крупная кнопка DASH прямо под большим пальцем для идеального рывка (Perfect Dash), плюс удобный селектор смены пушек.'
+                      : 'Large prominent DASH button right under your thumb for reactive dodging, accompanied by a quick weapon switcher.'}
                   </p>
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5">
-                <h4 className="font-orbitron font-bold text-xs text-cyan-300">
-                  {isRu ? 'Награды и интерфейс рейда:' : 'Raid Rewards & Combat HUD:'}
-                </h4>
-                <p className="text-xs text-slate-300 leading-relaxed">
+              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-1.5 text-xs text-slate-300">
+                <span className="font-orbitron font-bold text-emerald-400 block">
+                  {isRu ? '💡 Мобильные фичи интерфейса:' : '💡 Mobile Interface Features:'}
+                </span>
+                <p className="text-slate-400">
                   {isRu
-                    ? 'Во время боя на экране отображается гигантская шкала HP и щитов Титана, метка босса на радаре в виде красного черепа, а также звание «👑 MVP УРОНА» для игрока, нанесшего наибольший урон. За победу над боссом начисляются повышенные монеты и бонусный боевой рейтинг RP в профиль!'
-                    : 'The HUD features a dedicated Titan boss health bar, pulsing radar skull tracker, and live "👑 DAMAGE MVP" badge. Defeating the boss grants boosted coins and RP rank progression!'}
+                    ? '• Сенсорный скролл всех списков и модалок без залипаний. • Авто-скрытие некритичных оверлеев во время ожесточенной перестрелки. • Увеличенные индикаторы щита и боезапаса. • Поддержка вертикальной и горизонтальной ориентации.'
+                    : '• Frictionless touch swipe scrolling across all modals & shop items. • Auto-hidden auxiliary overlays during intensive firefights. • Enlarged shield & ammo telemetry bars. • Seamless landscape & portrait support.'}
                 </p>
               </div>
             </div>
           )}
 
-          {/* TAB 3: ACCOUNTS & LADDER */}
-          {activeTab === 'accounts' && (
+          {/* TAB 5: LEADERBOARD & RP */}
+          {activeTab === 'leaderboard_rp' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-gradient-to-r from-amber-950/40 via-yellow-950/30 to-slate-900 border border-amber-500/40 shadow-lg">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-purple-950/40 via-amber-950/30 to-slate-900 border border-purple-500/40 shadow-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <Trophy className="w-5 h-5 text-amber-400" />
-                  <h3 className="font-orbitron font-bold text-sm sm:text-base text-amber-300">
-                    {isRu ? 'АККАУНТЫ, КАРЬЕРА ПИЛОТА & ЗАЛ СЛАВЫ' : 'ACCOUNTS, PILOT CAREER & HALL OF FAME'}
+                  <Trophy className="w-5 h-5 text-purple-400" />
+                  <h3 className="font-orbitron font-bold text-sm sm:text-base text-purple-300">
+                    {isRu
+                      ? 'ТАБЛИЦА ЛИДЕРОВ, RP И ПРОФИЛИ ПИЛОТОВ'
+                      : 'LEADERBOARD, RP RATING & PILOT PROFILES'}
                   </h3>
                 </div>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                   {isRu
-                    ? 'По вашим просьбам добавлена полноценная система учетных записей (Логин и Пароль)! Теперь вы не потеряете заработанные монеты, купленные скины кораблей, шляпы, следы и титулы при перезагрузке или смене устройства.'
-                    : 'As requested, a complete account system (Login & Password) is now live! Your hard-earned coins, unlocked ship hulls, cosmetics, hats, and battle titles are permanently saved on the server.'}
+                    ? 'В Beta 0.7 система рейтинга (RP) и профилей получила финальную полировку. Зарабатывайте RP за победы в PvP, уничтожение врагов и поверженных боссов в рейдах. Поднимайтесь по 6 ранговым ступеням и открывайте престижные титулы!'
+                    : 'Beta 0.7 refines the competitive RP ranking ladder and pilot profiles. Earn RP from PvP victories, frags, and raid boss triumphs. Climb through 6 competitive divisions and unlock prestigious prestige titles!'}
                 </p>
               </div>
 
@@ -442,8 +797,8 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
                   </h4>
                   <p className="text-xs text-slate-300 leading-relaxed mb-2">
                     {isRu
-                      ? 'В профиле пилота отслеживается процент побед (Win Rate), соотношение фрагов к смертям (K/D), наивысший счёт и количество поверженных боссов.'
-                      : 'Your pilot profile tracks career Win Rate, K/D ratio, highest match score, and defeated raid bosses.'}
+                      ? 'В профиле отображаются экипированные скины корабля, шляпы, аксессуары и позывной с титулом. Отслеживайте Win Rate, соотношение фрагов к смертям (K/D), наивысший счёт и количество поверженных боссов.'
+                      : 'Your pilot profile showcases equipped starship hulls, hats, accessories, and pilot title. Tracks Win Rate, K/D ratio, highest match score, and defeated raid bosses.'}
                   </p>
                   <p className="text-xs text-slate-400 leading-relaxed">
                     {isRu
@@ -455,75 +810,78 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
             </div>
           )}
 
-          {/* TAB 4: HUD SCALE & PING */}
-          {activeTab === 'hud_scale' && (
+          {/* TAB 6: ANIMATIONS */}
+          {activeTab === 'animations' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-gradient-to-r from-sky-950/40 via-blue-950/40 to-slate-900 border border-sky-500/40 shadow-lg">
+              <div className="p-4 rounded-xl bg-gradient-to-r from-pink-950/40 via-purple-950/40 to-slate-900 border border-pink-500/40 shadow-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <Sliders className="w-5 h-5 text-sky-400" />
-                  <h3 className="font-orbitron font-bold text-sm sm:text-base text-sky-300">
-                    {isRu ? 'МАСШТАБ HUD, ОПТИМИЗАЦИЯ PING И МОБИЛЬНЫЙ СКРОЛЛ' : 'HUD SCALE, PING LATENCY & MOBILE SCROLL'}
+                  <Sparkles className="w-5 h-5 text-pink-400" />
+                  <h3 className="font-orbitron font-bold text-sm sm:text-base text-pink-300">
+                    {isRu
+                      ? 'ОБНОВЛЕННЫЕ И ПЛАВНЫЕ АНИМАЦИИ ИГРОКОВ'
+                      : 'UPGRADED & FLUID PLAYER ANIMATIONS'}
                   </h3>
                 </div>
                 <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
                   {isRu
-                    ? 'Мы полностью починили работу вкладки «Масштаб интерфейса (HUD Scale)», убрали сетевой джиттер и сделали мобильный интерфейс удобным для любых экранов.'
-                    : 'We resolved HUD scale responsiveness, eliminated network jitter buffering, and introduced silky-smooth vertical touch scrolling on mobile.'}
+                    ? 'Визуальный отклик кораблей и кастомизаций был полностью переписан на холсте (Canvas): плавная кинематика поворота, физика ускорения, динамические частицы сопел и эффекты поглощения урона щитами.'
+                    : 'Starship visual response and cosmetic rendering have been overhauled on Canvas: smooth rotational damping, acceleration physics, dynamic thruster jet particles, and kinetic shield ripple absorb effects.'}
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                  <h4 className="font-orbitron font-bold text-xs text-sky-300 mb-1 flex items-center gap-1.5">
-                    <Sliders className="w-3.5 h-3.5" />
-                    {isRu ? 'Плавный HUD Scale' : 'Smooth HUD Scale'}
+                  <h4 className="font-orbitron font-bold text-xs text-pink-300 mb-1 flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-pink-400" />
+                    {isRu ? 'Кинематическое сглаживание поворота' : 'Kinematic Angular Damping'}
                   </h4>
                   <p className="text-[11px] text-slate-400 leading-normal">
                     {isRu
-                      ? 'Регулируйте масштаб от 65% до 125%. Все виджеты, радар, полоски HP и джойстики плавно подстраиваются под размер экрана без сдвигов.'
-                      : 'Scale from 65% to 125%. All health bars, radar mini-map and virtual controls scale smoothly.'}
+                      ? 'Корпус корабля больше не дёргается при резкой смене направления прицела. Плавная интерполяция угла поворота создает реалистичное ощущение инерции в невесомости.'
+                      : 'Vessels no longer snap jarringly when sweeping aim angles. Smooth angular interpolation mimics genuine space zero-g inertia.'}
                   </p>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800">
                   <h4 className="font-orbitron font-bold text-xs text-cyan-300 mb-1 flex items-center gap-1.5">
-                    <Wifi className="w-3.5 h-3.5" />
-                    {isRu ? 'Стабилизация Ping' : 'Ping Optimization'}
+                    <Shield className="w-3.5 h-3.5 text-cyan-400" />
+                    {isRu ? 'Пульсация и реакция щитов' : 'Pulsating Reactive Shield Waves'}
                   </h4>
                   <p className="text-[11px] text-slate-400 leading-normal">
                     {isRu
-                      ? 'Интервал пинга ускорен до 800мс, включен TCP Socket NoDelay на сервере, устранены задержки очередей пакетов.'
-                      : 'Ping probe optimized to 800ms, TCP socket NoDelay active on server, eliminating packet queue bottlenecks.'}
+                      ? 'Энергощит визуализируется мягким неоновым ореолом. При попадании снаряда по щиту пробегает круговая ударная волна, сигнализирующая о поглощении урона.'
+                      : 'Energy shields project a subtle neon halo. Projectile impacts send kinetic circular ripples through the barrier, indicating shield absorption.'}
                   </p>
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800">
-                  <h4 className="font-orbitron font-bold text-xs text-emerald-300 mb-1 flex items-center gap-1.5">
-                    <Smartphone className="w-3.5 h-3.5" />
-                    {isRu ? 'Тач-скролл на телефонах' : 'Mobile Touch Scroll'}
+                  <h4 className="font-orbitron font-bold text-xs text-amber-300 mb-1 flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-amber-400" />
+                    {isRu ? 'Интерактивные сопла и трастеры' : 'Interactive Thruster Plumes'}
                   </h4>
                   <p className="text-[11px] text-slate-400 leading-normal">
                     {isRu
-                      ? 'Главное меню и лобби получили вертикальный скролл. Все кнопки, карты, 14 модулей и кастомизация корабля легко доступны!'
-                      : 'Main menu and lobby feature vertical touch scroll, giving instant access to all weapons, 14 modules, and maps on mobile.'}
+                      ? 'Сопла двигателей реагируют на нажатие клавиш: в покое — тлеющий свет, при движении — плазменный факел, при Turbo Dash — ослепительный импульс.'
+                      : 'Engine exhausts react to flight inputs: idle glow when stationary, elongated plasma plume during throttle, explosive burst on Turbo Dash.'}
                   </p>
                 </div>
-              </div>
 
-              <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                <span className="text-slate-400">
-                  {isRu
-                    ? 'Настройка во время боя: Нажмите иконку шестеренки возле радара в правом верхнем углу, чтобы изменить масштаб HUD прямо в игре! Для сетевой телеметрии нажмите F3.'
-                    : 'In-combat tweak: Click the Settings gear next to the radar in the top-right corner to tweak HUD scale mid-match! For live net graph, press F3.'}
-                </span>
-                <span className="font-mono text-cyan-400 font-bold px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/30 text-[10px] sm:text-xs self-start sm:self-auto shrink-0">
-                  F3 NET GRAPH
-                </span>
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800">
+                  <h4 className="font-orbitron font-bold text-xs text-purple-300 mb-1 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                    {isRu ? 'Отрисовка всех кастомизаций в бою' : 'Live Rendering of All Cosmetics'}
+                  </h4>
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    {isRu
+                      ? 'Все 25 типов корпусов, надетые шляпы, аксессуары и шлейфы корректно прорисовываются прямо в игре на холсте с сохранением высокой кадровой частоты.'
+                      : 'All 25 unique hull archetypes, equipped hats, flank accessories, and trails are rendered in real time while maintaining smooth 60 FPS.'}
+                  </p>
+                </div>
               </div>
             </div>
           )}
 
-          {/* TAB 3: 9 NEW WEAPONS */}
+          {/* TAB 7: WEAPONS */}
           {activeTab === 'weapons' && (
             <div className="space-y-3">
               <p className="text-xs text-slate-400">
@@ -578,268 +936,145 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
                 </div>
 
                 {/* 3. Missile Launcher */}
-                <div className="p-3 rounded-xl bg-slate-950/80 border border-rose-500/30">
+                <div className="p-3 rounded-xl bg-slate-950/80 border border-red-500/30">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-orbitron font-bold text-xs text-rose-300 flex items-center gap-1.5">
-                      <Radio className="w-3.5 h-3.5 text-rose-400" />
+                    <span className="font-orbitron font-bold text-xs text-red-300 flex items-center gap-1.5">
+                      <Rocket className="w-3.5 h-3.5 text-red-400" />
                       {isRu ? 'Missile Launcher (Ракетница)' : 'Missile Launcher'}
                     </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-300 border border-rose-500/30">
-                      HOMING / SPLASH
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-red-500/10 text-red-300 border border-red-500/30">
+                      SPLASH / HOMING
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-300 mb-1.5">
                     {isRu
-                      ? 'Запускает тяжелые самонаводящиеся ракеты с взрывным радиусом поражения (Splash Damage).'
-                      : 'Launches lock-on guided missiles with area-of-effect splash radius.'}
+                      ? 'Тяжелые ракеты с радиусом взрывного сплеша 60px. Идеально против скоплений врагов и босса.'
+                      : 'Heavy explosive missiles with 60px splash radius. Devastating vs clustered enemies & bosses.'}
                   </p>
                   <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1">
-                    <span>{isRu ? 'Сила: Зональный урон' : 'Pro: Splash area'}</span>
-                    <span>{isRu ? 'Слабость: Медленная скорость' : 'Con: Dodgeable by Dash'}</span>
+                    <span>{isRu ? 'Сила: АоЕ урон' : 'Pro: AoE Blast'}</span>
+                    <span>{isRu ? 'Слабость: Медленный полет' : 'Con: Slow projectile'}</span>
                   </div>
                 </div>
 
-                {/* 4. Laser Beam */}
-                <div className="p-3 rounded-xl bg-slate-950/80 border border-emerald-500/30">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-orbitron font-bold text-xs text-emerald-300 flex items-center gap-1.5">
-                      <Crosshair className="w-3.5 h-3.5 text-emerald-400" />
-                      {isRu ? 'Laser Beam (Лазерный луч)' : 'Laser Beam'}
-                    </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                      HITSCAN / INSTANT
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-300 mb-1.5">
-                    {isRu
-                      ? 'Мгновенное попадание (Hitscan) без времени полета снаряда. Ограниченная дистанция, блокируется стенами.'
-                      : 'Instantaneous hitscan beam with 0 flight time. Medium range, stopped by obstacles.'}
-                  </p>
-                  <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1">
-                    <span>{isRu ? 'Сила: Нельзя увернуться' : 'Pro: Instant hit'}</span>
-                    <span>{isRu ? 'Слабость: Блокируется стенами' : 'Con: Wall blocked'}</span>
-                  </div>
-                </div>
-
-                {/* 5. EMP Cannon */}
+                {/* 4. Railgun */}
                 <div className="p-3 rounded-xl bg-slate-950/80 border border-purple-500/30">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="font-orbitron font-bold text-xs text-purple-300 flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-purple-400" />
-                      {isRu ? 'EMP Cannon (ЭМИ пушка)' : 'EMP Cannon'}
+                      <Crosshair className="w-3.5 h-3.5 text-purple-400" />
+                      {isRu ? 'Railgun (Рельсотрон)' : 'Railgun'}
                     </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-300 border border-purple-500/30">
-                      TACTICAL / DISRUPT
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-300 mb-1.5">
-                    {isRu
-                      ? 'Отключает вражескую регенерацию щита на 4 секунды, увеличивает кулдаун Dash и сбивает наведение.'
-                      : 'Disables enemy shield regen for 4s, doubles Dash recharge time, disrupts guidance.'}
-                  </p>
-                  <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1">
-                    <span>{isRu ? 'Сила: Отключение щита' : 'Pro: Debuff enemy'}</span>
-                    <span>{isRu ? 'Слабость: Низкий урон' : 'Con: Lower damage'}</span>
-                  </div>
-                </div>
-
-                {/* 6. Mine Launcher */}
-                <div className="p-3 rounded-xl bg-slate-950/80 border border-yellow-500/30">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-orbitron font-bold text-xs text-yellow-300 flex items-center gap-1.5">
-                      <Bomb className="w-3.5 h-3.5 text-yellow-400" />
-                      {isRu ? 'Mine Launcher (Миноукладчик)' : 'Mine Launcher'}
-                    </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-yellow-500/10 text-yellow-300 border border-yellow-500/30">
-                      TRAPS / CONTROL
+                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-300 border border-purple-400/40">
+                      SNIPER / PIERCE
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-300 mb-1.5">
                     {isRu
-                      ? 'Оставляет парящие мины с датчиками движения. Идеально для контроля узких проходов и защиты спавна.'
-                      : 'Deploys hovering proximity mines. Exceptional for zone denial and choke point traps.'}
+                      ? 'Сверхдальний гиперзвуковой луч. Прошивает корабли насквозь и мгновенно сносит энергощиты.'
+                      : 'Ultra long-range hypersonic beam. Pierces multiple vessels and shreds energy shields.'}
                   </p>
                   <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1">
-                    <span>{isRu ? 'Сила: Контроль территории' : 'Pro: Area denial'}</span>
-                    <span>{isRu ? 'Слабость: Не для дуэли в открытом поле' : 'Con: Static weapon'}</span>
-                  </div>
-                </div>
-
-                {/* 7. Ricochet Cannon */}
-                <div className="p-3 rounded-xl bg-slate-950/80 border border-pink-500/30">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-orbitron font-bold text-xs text-pink-300 flex items-center gap-1.5">
-                      <Repeat className="w-3.5 h-3.5 text-pink-400" />
-                      {isRu ? 'Ricochet Cannon (Рикошет)' : 'Ricochet Cannon'}
-                    </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-pink-500/10 text-pink-300 border border-pink-500/30">
-                      BOUNCE / ANGLES
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-300 mb-1.5">
-                    {isRu
-                      ? 'Снаряды отскакивают от стен до 3 раз. Смертоносно в лабиринтах и комнатах с препятствиями!'
-                      : 'Kinetic disks reflect off walls up to 3 times. Lethal in labyrinth corridors and CQB.'}
-                  </p>
-                  <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1">
-                    <span>{isRu ? 'Сила: Стрельба из-за угла' : 'Pro: Bank shots'}</span>
-                    <span>{isRu ? 'Слабость: Открытые пространства' : 'Con: Open arenas'}</span>
-                  </div>
-                </div>
-
-                {/* 8. Charge Beam */}
-                <div className="p-3 rounded-xl bg-slate-950/80 border border-amber-500/30">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-orbitron font-bold text-xs text-amber-300 flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-amber-400" />
-                      {isRu ? 'Charge Beam (Зарядный луч)' : 'Charge Beam'}
-                    </span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30">
-                      CHARGE / HEAVY LANCE
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-300 mb-1.5">
-                    {isRu
-                      ? 'Удерживайте ЛКМ для зарядки мега-луча. Чем дольше зарядка — тем дальше дальность и колоссальнее урон (до 140 HP).'
-                      : 'Hold fire to charge a devastating particle lance. Longer charge = extreme range & 140+ damage.'}
-                  </p>
-                  <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1">
-                    <span>{isRu ? 'Сила: Разрушительный урон' : 'Pro: Devastating poke'}</span>
-                    <span>{isRu ? 'Слабость: Замедление при зарядке' : 'Con: Slow while charging'}</span>
+                    <span>{isRu ? 'Сила: Снайперская точность' : 'Pro: Infinite Piercing'}</span>
+                    <span>{isRu ? 'Слабость: Долгая перезарядка' : 'Con: Long cooldown'}</span>
                   </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 4: MODIFIERS */}
+          {/* TAB 8: MODIFIERS */}
           {activeTab === 'modifiers' && (
-            <div className="space-y-4">
-              <div className="p-3.5 rounded-xl bg-purple-950/30 border border-purple-500/40">
-                <h3 className="font-orbitron font-bold text-xs sm:text-sm text-purple-300 mb-1 flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-purple-400" />
-                  {isRu ? 'Все 14 Модификаторов Оружия (Билдостроение)' : 'All 14 Modular Weapon Modifiers (Builds)'}
-                </h3>
-                <p className="text-xs text-slate-300">
+            <div className="space-y-3">
+              <div className="p-3 rounded-xl bg-slate-950/60 border border-purple-500/30">
+                <div className="text-[11px] font-orbitron font-bold text-purple-300 mb-1 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                  <span>{isRu ? '14 МОДИФИКАТОРОВ ОРУЖИЯ' : '14 WEAPON MODIFIERS'}</span>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
                   {isRu
-                    ? 'Все модификаторы доступны прямо в лобби перед матчем и выпадают на арене в виде светящихся модулей. Совмещайте до 3 модулей для создания своего уникального билда!'
-                    : 'All 14 modifiers are selectable directly in the Lobby room before the match and spawn as luminous pickups in the arena. Combine up to 3 mods!'}
+                    ? 'Собирайте уникальные билды оружия, комбинируя элементальные модификаторы с пушками:'
+                    : 'Craft unique custom builds by fusing elemental modifiers onto your selected cannons:'}
                 </p>
               </div>
 
-              {/* 14 Modifiers Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-xs max-h-[50vh] overflow-y-auto pr-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                 {Object.values(MODIFIER_METAS).map((mod) => (
                   <div
                     key={mod.type}
-                    className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-purple-500/40 transition-all flex flex-col justify-between"
+                    className="p-2.5 rounded-xl bg-slate-950/80 border transition-all hover:scale-[1.01]"
+                    style={{ borderColor: `${mod.color}40` }}
                   >
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center space-x-1.5">
-                          <span className="text-base">{mod.icon}</span>
-                          <span className="font-orbitron font-bold text-slate-100 text-[11px] sm:text-xs">
-                            {isRu ? mod.nameRu : mod.name}
-                          </span>
-                        </div>
-                        <span
-                          className="text-[9px] font-mono px-1.5 py-0.2 rounded border font-semibold uppercase"
-                          style={{ borderColor: `${mod.color}60`, color: mod.color, backgroundColor: `${mod.color}15` }}
-                        >
-                          {mod.type.replace('_', ' ')}
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-base">{mod.icon}</span>
+                        <span className="font-orbitron font-bold text-slate-100 text-[11px] sm:text-xs">
+                          {isRu ? mod.nameRu : mod.name}
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-400 leading-relaxed mt-1">
-                        {isRu ? mod.descriptionRu : mod.description}
-                      </p>
+                      <span
+                        className="text-[9px] font-mono px-1.5 py-0.2 rounded border font-semibold uppercase"
+                        style={{ borderColor: `${mod.color}60`, color: mod.color, backgroundColor: `${mod.color}15` }}
+                      >
+                        {mod.type.replace('_', ' ')}
+                      </span>
                     </div>
+                    <p className="text-[11px] text-slate-400 leading-relaxed mt-1">
+                      {isRu ? mod.descriptionRu : mod.description}
+                    </p>
                   </div>
                 ))}
               </div>
-
-              {/* Recommended Build Synergies */}
-              <div className="p-3 rounded-xl bg-slate-950/60 border border-cyan-500/30">
-                <div className="text-[11px] font-orbitron font-bold text-cyan-300 mb-1 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{isRu ? 'ТОПОВЫЕ СИНЕРГИИ МОДИФИКАТОРОВ' : 'TOP MODIFIER SYNERGIES'}</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] text-slate-300 font-mono">
-                  <div className="p-1.5 rounded bg-slate-900 border border-slate-800">
-                    <span className="text-pink-400 font-bold">1. Shield Breaker + Armor Piercer:</span>
-                    <span className="text-slate-400 block mt-0.5">
-                      {isRu ? 'Мгновенно сносит щиты и сразу пробивает 40% урона в корпус.' : 'Shreds shields instantly and bypasses 40% direct to hull.'}
-                    </span>
-                  </div>
-                  <div className="p-1.5 rounded bg-slate-900 border border-slate-800">
-                    <span className="text-purple-400 font-bold">2. Gravity + Explosive:</span>
-                    <span className="text-slate-400 block mt-0.5">
-                      {isRu ? 'Затягивает корабли в точку взрыва для максимального сплеша.' : 'Draws enemies into the detonation epicenter for max blast.'}
-                    </span>
-                  </div>
-                  <div className="p-1.5 rounded bg-slate-900 border border-slate-800">
-                    <span className="text-cyan-400 font-bold">3. Rapid Fire + Freeze:</span>
-                    <span className="text-slate-400 block mt-0.5">
-                      {isRu ? 'Бесконечный стан-лок врагов постоянными замедляющими импульсами.' : 'Infinite movement lock with high-cadence cryogenic pulses.'}
-                    </span>
-                  </div>
-                  <div className="p-1.5 rounded bg-slate-900 border border-slate-800">
-                    <span className="text-amber-400 font-bold">4. Split + Chain:</span>
-                    <span className="text-slate-400 block mt-0.5">
-                      {isRu ? 'Осколки вызывают цепные молнии по всем вокруг.' : 'Split fragments trigger cascading chain electric arcs.'}
-                    </span>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
-          {/* TAB 5: COMBAT & MECHANICS */}
-          {activeTab === 'combat' && (
+          {/* TAB 9: ARCHIVE (0.6) */}
+          {activeTab === 'archive_06' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="p-4 rounded-xl bg-slate-950/80 border border-emerald-500/30">
-                  <div className="flex items-center gap-2 mb-2 text-emerald-400 font-orbitron font-bold text-xs">
-                    <Shield className="w-4 h-4" />
-                    <span>{isRu ? 'Разделение: Корпус (Hull) и Щит (Shield)' : 'Hull vs Shield Dynamics'}</span>
-                  </div>
-                  <p className="text-xs text-slate-300 leading-relaxed mb-2">
+              <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-700 shadow-md">
+                <div className="flex items-center gap-2 mb-2">
+                  <History className="w-5 h-5 text-slate-400" />
+                  <h3 className="font-orbitron font-bold text-sm sm:text-base text-slate-300">
+                    {isRu ? 'АРХИВ ПАТЧЕЙ: BETA 0.6 («ПРОБУЖДЕНИЕ ТИТАНА»)' : "PATCH ARCHIVE: BETA 0.6 (TITAN'S AWAKENING)"}
+                  </h3>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+                  {isRu
+                    ? 'В версии 0.6 был заложен фундамент современной CyberArena: внедрен первый PvE-рейд на Титана Пустоты на арене 4800x4800, серверная база данных аккаунтов с логином и паролем, соревновательный рейтинг (RP), настройка масштаба HUD и оптимизация сетевого пинга.'
+                    : 'Version 0.6 established the modern foundation of CyberArena: introduced the original Void Titan PvE co-op raid on a 4800x4800 map, server database for login & password accounts, competitive RP matchmaking ladder, HUD Scale slider, and network ping optimization.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-300">
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                  <span className="font-orbitron font-bold text-cyan-400 block mb-1">
+                    {isRu ? '• Введение системы аккаунтов' : '• Account System Introduction'}
+                  </span>
+                  <p className="text-slate-400 text-[11px]">
                     {isRu
-                      ? 'У каждого корабля теперь 100 HP Корпуса + 100 HP Энергощита (всего 200 HP). Щит поглощает урон первым.'
-                      : 'Every starship now boasts 100 Hull HP + 100 Energy Shield HP (200 HP total). Shields absorb damage first.'}
+                      ? 'Сохранение монет, купленных скинов и статистики пилота на сервере.'
+                      : 'Persistent coins, purchased cosmetics, and pilot records synced to server.'}
                   </p>
-                  <ul className="text-[11px] text-slate-400 space-y-1">
-                    <li>• {isRu ? 'Задержка перезарядки: 3 секунды без получения урона' : 'Shield Regen Delay: 3s without receiving damage'}</li>
-                    <li>• {isRu ? 'Скорость восстановления: +12 Shield/сек' : 'Regen Rate: +12 Shield/sec'}</li>
-                    <li>• {isRu ? 'Корпус сам не регенерирует — собирайте аптечки!' : 'Hull never auto-repairs — grab Green Health orbs!'}</li>
-                  </ul>
                 </div>
 
-                <div className="p-4 rounded-xl bg-slate-950/80 border border-amber-500/30">
-                  <div className="flex items-center gap-2 mb-2 text-amber-400 font-orbitron font-bold text-xs">
-                    <Award className="w-4 h-4" />
-                    <span>{isRu ? 'Механика Perfect Dash (Идеальный рывок)' : 'Perfect Dash Counter-Mechanic'}</span>
-                  </div>
-                  <p className="text-xs text-slate-300 leading-relaxed mb-2">
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                  <span className="font-orbitron font-bold text-emerald-400 block mb-1">
+                    {isRu ? '• Разделение HP и Щита' : '• Separate Hull & Shield Dynamics'}
+                  </span>
+                  <p className="text-slate-400 text-[11px]">
                     {isRu
-                      ? 'Нажмите рывок (Shift / Space) ровно в момент, когда снаряд врага подлетел в упор (< 46 px)!'
-                      : 'Execute Turbo Dash (Shift / Space) right as a projectile reaches point-blank (< 46 px)!'}
+                      ? '100 HP корпуса + 100 HP энергощита с авто-восстановлением через 3 секунды без урона.'
+                      : '100 Hull HP + 100 Shield HP with auto-recharge after 3s out of combat.'}
                   </p>
-                  <ul className="text-[11px] text-slate-400 space-y-1">
-                    <li>• {isRu ? 'Мгновенная золотая волна и неуязвимость' : 'Luminous golden shockwave & invulnerability'}</li>
-                    <li>• {isRu ? '+30 бонусных очков на табло' : '+30 bonus leaderboard score points'}</li>
-                    <li>• {isRu ? 'Мгновенный сброс кулдауна рывка для серии маневров' : 'Instantly refreshes Dash cooldown for combo chaining'}</li>
-                  </ul>
                 </div>
               </div>
             </div>
           )}
-
         </div>
 
         {/* Footer */}
         <div className="px-4 sm:px-6 py-3 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between">
-          <div className="text-[11px] font-mono text-slate-400">
-            <span>CYBERARENA • BETA 0.6: «ПРОБУЖДЕНИЕ ТИТАНА» (TITAN'S AWAKENING)</span>
+          <div className="text-[11px] font-mono text-cyan-400">
+            <span>CYBERARENA • BETA 0.7: «ТИТАНЫ КИБЕРПАНКА» (TITANS OF CYBERPUNK)</span>
           </div>
           <button
             onClick={onClose}

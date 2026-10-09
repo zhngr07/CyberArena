@@ -29,6 +29,7 @@
           if (
             reasonMsg.includes('WebSocket closed without opened') ||
             reasonMsg.includes('[vite]') ||
+            reasonMsg.includes('WebTransport') ||
             reasonMsg.includes('createWebSocketModuleRunnerTransport')
           ) {
             event.stopImmediatePropagation();

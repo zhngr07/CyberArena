@@ -34,16 +34,118 @@ export interface PlayerModifier {
   tier: ModifierTier;
 }
 
-export type ShipModelType = 'phantom' | 'dragon' | 'raven' | 'dreadnought' | 'ufo';
-export type HatType = 'none' | 'crown' | 'visor' | 'horns' | 'halo' | 'samurai' | 'headset';
-export type TrailType = 'default' | 'fire' | 'lightning' | 'rainbow' | 'matrix' | 'stars';
-export type TitleType = 'rookie' | 'sniper' | 'slayer' | 'untouchable' | 'legend';
+export type ShipModelType =
+  | 'phantom'
+  | 'dragon'
+  | 'raven'
+  | 'dreadnought'
+  | 'ufo'
+  | 'phoenix'
+  | 'viper'
+  | 'specter'
+  | 'titan'
+  | 'valkyrie'
+  | 'interceptor'
+  | 'nebula'
+  | 'hyperion'
+  | 'chronos'
+  | 'eclipse'
+  | 'vortex'
+  | 'aurora'
+  | 'chimera'
+  | 'tempest'
+  | 'pulsar'
+  | 'scythe'
+  | 'kraken'
+  | 'solaris'
+  | 'abyss'
+  | 'sentinel';
+
+export type HatType =
+  | 'none'
+  | 'crown'
+  | 'visor'
+  | 'horns'
+  | 'halo'
+  | 'samurai'
+  | 'headset'
+  | 'cyber_shades'
+  | 'neon_horns'
+  | 'viking_helmet'
+  | 'golden_monocle'
+  | 'pilot_goggles'
+  | 'ninja_headband'
+  | 'pirate_tricorne'
+  | 'plasma_antennae'
+  | 'cyber_mask'
+  | 'quantum_hood'
+  | 'imperial_helm';
+
+export type AccessoryType =
+  | 'none'
+  | 'energy_wings'
+  | 'orbit_drone'
+  | 'cyber_tail'
+  | 'ring_of_fire'
+  | 'nano_shield_aura'
+  | 'plasma_fins'
+  | 'quantum_spikes'
+  | 'photon_cape'
+  | 'holo_emblem'
+  | 'warp_crystal'
+  | 'satellite_dish';
+
+export type TrailType =
+  | 'default'
+  | 'fire'
+  | 'lightning'
+  | 'rainbow'
+  | 'matrix'
+  | 'stars'
+  | 'plasma_purple'
+  | 'quantum_cyan'
+  | 'toxic_acid'
+  | 'solar_gold'
+  | 'hyperdrive_red'
+  | 'void_blackhole'
+  | 'ice_comet'
+  | 'bubble_neon'
+  | 'glitch_binary'
+  | 'cherry_blossom';
+
+export type TitleType =
+  | 'rookie'
+  | 'sniper'
+  | 'slayer'
+  | 'untouchable'
+  | 'legend'
+  | 'warlord'
+  | 'titan_slayer'
+  | 'void_walker'
+  | 'cyber_god'
+  | 'apex_predator'
+  | 'phantom_ghost';
 
 export interface PlayerCosmetics {
   shipModel: ShipModelType;
   hat: HatType;
+  accessory?: AccessoryType;
   trail: TrailType;
   title: TitleType;
+}
+
+export interface BossMinion {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  angle: number;
+  health: number;
+  maxHealth: number;
+  radius: number;
+  targetId?: string;
+  type: 'drone' | 'kamikaze' | 'shield_guard';
 }
 
 export interface Vector2D {
@@ -283,6 +385,7 @@ export interface BossState {
   damageContribution: Record<string, number>; // playerId -> damage dealt
   mvpPlayerId?: string;
   mvpPlayerName?: string;
+  minions?: BossMinion[];
 }
 
 export interface RoomState {

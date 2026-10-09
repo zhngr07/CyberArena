@@ -1,4 +1,5 @@
 import {
+  BossMinion,
   BossState,
   Bullet,
   DynamicEventHazard,
@@ -123,7 +124,8 @@ export class GameEngine {
     this.room.obstacles = JSON.parse(JSON.stringify(this.map.obstacles));
     this.room.projectiles = [];
     this.room.powerUps = [];
-    this.room.matchTimeRemaining = GAME_CONSTANTS.MATCH_DURATION_SECONDS;
+    this.room.matchTimeRemaining = this.room.gameMode === 'boss_raid' ? 360 : GAME_CONSTANTS.MATCH_DURATION_SECONDS;
+    this.room.matchDuration = this.room.gameMode === 'boss_raid' ? 360 : GAME_CONSTANTS.MATCH_DURATION_SECONDS;
     this.room.currentEvent = null;
     this.room.bountyLeaderId = undefined;
     this.room.bountyAmount = undefined;
@@ -172,12 +174,14 @@ export class GameEngine {
 
     // Start 60 FPS authoritative server tick loop
     if (this.room.gameMode === 'boss_raid') {
+      this.room.matchTimeRemaining = 360;
+      this.room.matchDuration = 360;
       const playerCount = Math.max(1, Object.keys(this.room.players).length);
-      const bossHp = 25000 + playerCount * 10000;
-      const bossShield = 6000 + playerCount * 4000;
+      const bossHp = 38000 + playerCount * 15000;
+      const bossShield = 9000 + playerCount * 6000;
       this.room.boss = {
         id: 'boss_omega',
-        name: 'ТИТАН ПУСТОТЫ • ОМЕГА',
+        name: 'ТИТАН ПУСТОТЫ • ОМЕГА [BETA 0.7]',
         x: this.map.width / 2,
         y: this.map.height / 2,
         vx: 0,
@@ -189,9 +193,10 @@ export class GameEngine {
         maxShield: bossShield,
         phase: 1,
         isEnraged: false,
-        radius: 105,
+        radius: 110,
         damageContribution: {},
         attackName: 'ПЛАЗМЕННЫЙ ЗАЛП',
+        minions: [],
       };
       this.nextBossAttackTime = now + 2000;
     }
@@ -352,7 +357,7 @@ export class GameEngine {
       bountyLeaderId: this.room.bountyLeaderId,
       bountyAmount: this.room.bountyAmount,
       delta: !isKeyframe,
-      boss: this.room.boss ? { ...this.room.boss } : undefined,
+      boss: this.room.boss ? { ...this.room.boss, minions: this.room.boss.minions ? [...this.room.boss.minions] : [] } : undefined,
     });
   }
 
@@ -527,18 +532,49 @@ export class GameEngine {
 
   // --- BOT AI ---
   private updateBots(now: number, dt: number) {
+    const isBossRaid = this.room.gameMode === 'boss_raid' && this.room.boss && this.room.boss.health > 0;
+
     for (const p of Object.values(this.room.players)) {
       if (!p.isBot || p.isDead) continue;
 
-      let nearestTarget: Player | null = null;
+      let nearestTarget: { x: number; y: number; id: string } | null = null;
       let nearestDist = Infinity;
 
-      for (const other of Object.values(this.room.players)) {
-        if (other.id === p.id || other.isDead || (other.stealthRemaining && other.stealthRemaining > 0)) continue;
-        const d = Math.hypot(other.x - p.x, other.y - p.y);
-        if (d < nearestDist) {
-          nearestDist = d;
-          nearestTarget = other;
+      if (isBossRaid) {
+        // In Boss Raid: bots are allies of human players! They NEVER target human players or fellow ally bots.
+        // Priority order: 1) shield guards (to shatter boss invulnerability), 2) kamikazes (to protect squad), 3) drones, 4) the Boss!
+        const boss = this.room.boss!;
+        const minions = (boss.minions || []).filter((m) => m.health > 0);
+
+        // Sort minions by tactical threat level
+        const sortedMinions = [...minions].sort((a, b) => {
+          const rank = (t: string) => (t === 'shield_guard' ? 3 : t === 'kamikaze' ? 2 : 1);
+          return rank(b.type) - rank(a.type);
+        });
+
+        for (const m of sortedMinions) {
+          const d = Math.hypot(m.x - p.x, m.y - p.y);
+          if (d < nearestDist && d < 800) {
+            nearestDist = d;
+            nearestTarget = { x: m.x, y: m.y, id: m.id };
+          }
+        }
+
+        // If no close minion threat, concentrate firepower on the Titan Boss
+        if (!nearestTarget) {
+          nearestDist = Math.hypot(boss.x - p.x, boss.y - p.y);
+          nearestTarget = { x: boss.x, y: boss.y, id: boss.id };
+        }
+      } else {
+        // Standard PvP FFA / TDM modes
+        for (const other of Object.values(this.room.players)) {
+          if (other.id === p.id || other.isDead || (other.stealthRemaining && other.stealthRemaining > 0)) continue;
+          if (this.room.gameMode === 'tdm' && other.team === p.team) continue;
+          const d = Math.hypot(other.x - p.x, other.y - p.y);
+          if (d < nearestDist) {
+            nearestDist = d;
+            nearestTarget = other;
+          }
         }
       }
 
@@ -552,9 +588,11 @@ export class GameEngine {
         aimAngle = Math.atan2(nearestTarget.y - p.y, nearestTarget.x - p.x);
 
         // Optimal engagement distances per weapon
-        const optimalDist = p.weapon === 'railgun' ? 700 : p.weapon === 'plasma_shotgun' ? 180 : 420;
+        const optimalDist = isBossRaid
+          ? 380
+          : (p.weapon === 'railgun' ? 700 : p.weapon === 'plasma_shotgun' ? 180 : 420);
 
-        if (nearestDist > optimalDist + 50) {
+        if (nearestDist > optimalDist + 60) {
           moveX = Math.cos(aimAngle);
           moveY = Math.sin(aimAngle);
         } else if (nearestDist < optimalDist - 60) {
@@ -566,7 +604,7 @@ export class GameEngine {
           moveY = Math.cos(aimAngle);
         }
 
-        if (nearestDist < 800) {
+        if (nearestDist < 900) {
           shooting = true;
         }
 
@@ -1064,6 +1102,30 @@ export class GameEngine {
           if (!b.piercing) {
             continue;
           }
+        }
+
+        // Also check collision against Boss mini-NPC minions
+        let hitMinion = false;
+        if (this.room.boss.minions) {
+          for (const m of this.room.boss.minions) {
+            if (m.health <= 0) continue;
+            const mDist = Math.hypot(nextX - m.x, nextY - m.y);
+            if (mDist <= m.radius + b.radius) {
+              m.health -= b.damage;
+              hitMinion = true;
+              if (m.health <= 0) {
+                this.detonateExplosion(m.x, m.y, 80, 25, b.ownerId, b.weaponType, now);
+                const attacker = this.room.players[b.ownerId];
+                if (attacker) {
+                  attacker.score += 80;
+                }
+              }
+              break;
+            }
+          }
+        }
+        if (hitMinion && !b.piercing) {
+          continue;
         }
       }
 
@@ -1635,10 +1697,94 @@ export class GameEngine {
     boss.x = Math.max(pad, Math.min(this.map.width - pad, boss.x));
     boss.y = Math.max(pad, Math.min(this.map.height - pad, boss.y));
 
-    // Shield passive regeneration
+    // Shield passive regeneration + shield guard active conduit
+    const activeShieldGuards = (boss.minions || []).filter((m) => m.health > 0 && m.type === 'shield_guard').length;
+    const shieldRegenRate = 25 + activeShieldGuards * 60; // Shield guards actively boost Boss shield recharge!
     if (boss.shield < boss.maxShield) {
-      boss.shield = Math.min(boss.maxShield, boss.shield + 20 * dt);
+      boss.shield = Math.min(boss.maxShield, boss.shield + shieldRegenRate * dt);
     }
+
+    // Process Mini-NPC minions (spawn, movement, attack, kamikaze)
+    if (!boss.minions) boss.minions = [];
+    
+    // Spawn mini-NPCs periodically if count < 6
+    if (boss.minions.length < 6 && Math.random() < 0.03) {
+      const minionAngle = Math.random() * Math.PI * 2;
+      const minionType: 'drone' | 'kamikaze' | 'shield_guard' =
+        boss.phase === 3 ? 'kamikaze' : (Math.random() < 0.5 ? 'drone' : 'shield_guard');
+      const minionHp = minionType === 'shield_guard' ? 450 : minionType === 'kamikaze' ? 220 : 320;
+      boss.minions.push({
+        id: `minion_${now}_${Math.random().toString(36).slice(2, 6)}`,
+        x: boss.x + Math.cos(minionAngle) * (boss.radius + 60),
+        y: boss.y + Math.sin(minionAngle) * (boss.radius + 60),
+        vx: 0,
+        vy: 0,
+        angle: minionAngle,
+        health: minionHp,
+        maxHealth: minionHp,
+        radius: minionType === 'shield_guard' ? 22 : 18,
+        type: minionType,
+      });
+    }
+
+    // Update active minions
+    const aliveMinions: BossMinion[] = [];
+    const alivePlayers = Object.values(this.room.players).filter((p) => !p.isDead);
+
+    for (const m of boss.minions) {
+      if (m.health <= 0) continue;
+
+      // Find closest player to minion
+      let targetP: Player | null = null;
+      let minionDist = Infinity;
+      for (const p of alivePlayers) {
+        const d = Math.hypot(p.x - m.x, p.y - m.y);
+        if (d < minionDist) {
+          minionDist = d;
+          targetP = p;
+        }
+      }
+
+      if (targetP) {
+        const ang = Math.atan2(targetP.y - m.y, targetP.x - m.x);
+        m.angle = ang;
+        const spd = m.type === 'kamikaze' ? 160 : m.type === 'shield_guard' ? 80 : 110;
+        m.vx += (Math.cos(ang) * spd - m.vx) * 0.08;
+        m.vy += (Math.sin(ang) * spd - m.vy) * 0.08;
+
+        // Kamikaze detonation against player
+        if (m.type === 'kamikaze' && minionDist <= m.radius + GAME_CONSTANTS.PLAYER_RADIUS + 15) {
+          this.applyDamageToPlayer(targetP, 45, 'boss', 'plasma', now);
+          this.detonateExplosion(m.x, m.y, 90, 40, 'boss', 'plasma', now);
+          m.health = 0; // destroyed
+          continue;
+        }
+
+        // Drone shooting at players
+        if (m.type === 'drone' && minionDist < 600 && Math.random() < 0.02) {
+          this.room.projectiles.push({
+            id: `minion_shot_${now}_${Math.random()}`,
+            ownerId: 'boss',
+            ownerName: 'Мини-Дрон Босса',
+            weaponType: 'plasma',
+            x: m.x + Math.cos(ang) * (m.radius + 5),
+            y: m.y + Math.sin(ang) * (m.radius + 5),
+            vx: Math.cos(ang) * 400,
+            vy: Math.sin(ang) * 400,
+            damage: 18,
+            color: '#f43f5e',
+            radius: 7,
+            createdAt: now,
+            expiresAt: now + 2500,
+          });
+        }
+      }
+
+      m.x += m.vx * dt;
+      m.y += m.vy * dt;
+      aliveMinions.push(m);
+    }
+    boss.minions = aliveMinions;
 
     // Attacks
     if (now >= this.nextBossAttackTime) {
@@ -1732,16 +1878,20 @@ export class GameEngine {
     if (!this.room.boss || this.room.boss.health <= 0) return;
     const b = this.room.boss;
 
+    // Active shield guards absorb 30% of incoming damage to the boss's shields!
+    const activeShieldGuards = (b.minions || []).filter((m) => m.health > 0 && m.type === 'shield_guard').length;
+    const effectiveDamage = activeShieldGuards > 0 && b.shield > 0 ? damage * 0.7 : damage;
+
     if (b.shield > 0) {
-      if (b.shield >= damage) {
-        b.shield -= damage;
+      if (b.shield >= effectiveDamage) {
+        b.shield -= effectiveDamage;
       } else {
-        const remaining = damage - b.shield;
+        const remaining = effectiveDamage - b.shield;
         b.shield = 0;
         b.health = Math.max(0, b.health - remaining);
       }
     } else {
-      b.health = Math.max(0, b.health - damage);
+      b.health = Math.max(0, b.health - effectiveDamage);
     }
 
     const hpRatio = b.health / b.maxHealth;

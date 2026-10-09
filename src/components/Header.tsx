@@ -78,9 +78,9 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenWhatsNew}
               className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 font-bold hidden xs:inline cursor-pointer transition-all transform hover:scale-105"
-              title={lang === 'ru' ? 'Что нового? (Beta 0.6: Пробуждение Титана)' : "What's new? (Beta 0.6: Titan Awakening)"}
+              title={lang === 'ru' ? 'Что нового? (Beta 0.7: Титаны Киберпанка)' : "What's new? (Beta 0.7: Titans of Cyberpunk)"}
             >
-              v0.6
+              v0.7
             </button>
           </div>
           <p className="text-[9px] uppercase font-mono tracking-widest text-cyan-400/70 hidden md:block">
@@ -90,9 +90,9 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Utilities */}
-      <div className="flex items-center space-x-1 sm:space-x-2.5">
-        {/* PWA Install Button */}
-        <PWAInstallButton lang={lang} />
+      <div className="flex items-center space-x-1 sm:space-x-2 shrink-0">
+        {/* PWA Install Button (shown on tablet/desktop, main menu has links) */}
+        <PWAInstallButton lang={lang} className="hidden sm:flex" />
 
         {/* Pilot Hall of Fame / Leaderboard button */}
         {onOpenLeaderboard && (

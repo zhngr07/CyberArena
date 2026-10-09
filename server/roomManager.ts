@@ -251,8 +251,8 @@ export class RoomManager {
       status: 'waiting',
       gameMode: chosenMode,
       countdown: 0,
-      matchTimeRemaining: chosenMode === 'boss_raid' ? 300 : GAME_CONSTANTS.MATCH_DURATION_SECONDS, // 5 min for boss raid
-      matchDuration: chosenMode === 'boss_raid' ? 300 : GAME_CONSTANTS.MATCH_DURATION_SECONDS,
+      matchTimeRemaining: chosenMode === 'boss_raid' ? 360 : GAME_CONSTANTS.MATCH_DURATION_SECONDS, // 6 min for boss raid
+      matchDuration: chosenMode === 'boss_raid' ? 360 : GAME_CONSTANTS.MATCH_DURATION_SECONDS,
       mapId: chosenMap,
       players: { [playerId]: player },
       projectiles: [],
@@ -404,10 +404,30 @@ export class RoomManager {
     const botName = `${BOT_NAMES[botIdx]}`;
     const botColor = BOT_COLORS[botIdx];
 
-    const botModels = ['phantom', 'dragon', 'raven', 'dreadnought', 'ufo'] as const;
-    const botHats = ['none', 'visor', 'horns', 'halo', 'samurai', 'headset'] as const;
-    const botTrails = ['fire', 'lightning', 'rainbow', 'matrix', 'stars'] as const;
-    const botTitles = ['sniper', 'slayer', 'untouchable', 'legend'] as const;
+    const botModels = [
+      'dragon', 'raven', 'dreadnought', 'ufo', 'phoenix', 'viper', 'specter', 'titan',
+      'valkyrie', 'interceptor', 'nebula', 'hyperion', 'chronos', 'eclipse', 'vortex',
+      'aurora', 'chimera', 'tempest', 'pulsar', 'scythe', 'kraken', 'solaris', 'abyss',
+      'sentinel', 'phantom'
+    ] as const;
+    const botHats = [
+      'none', 'visor', 'horns', 'halo', 'samurai', 'headset', 'cyber_shades',
+      'neon_horns', 'viking_helmet', 'golden_monocle', 'pilot_goggles', 'ninja_headband',
+      'pirate_tricorne', 'plasma_antennae', 'cyber_mask', 'quantum_hood', 'imperial_helm', 'crown'
+    ] as const;
+    const botAccessories = [
+      'none', 'energy_wings', 'orbit_drone', 'cyber_tail', 'ring_of_fire', 'nano_shield_aura',
+      'plasma_fins', 'quantum_spikes', 'photon_cape', 'holo_emblem', 'warp_crystal', 'satellite_dish'
+    ] as const;
+    const botTrails = [
+      'fire', 'lightning', 'rainbow', 'matrix', 'stars', 'solar_gold', 'plasma_purple',
+      'quantum_cyan', 'toxic_acid', 'hyperdrive_red', 'void_blackhole', 'ice_comet',
+      'bubble_neon', 'glitch_binary', 'cherry_blossom'
+    ] as const;
+    const botTitles = [
+      'sniper', 'slayer', 'untouchable', 'legend', 'titan_slayer', 'warlord',
+      'void_walker', 'cyber_god', 'apex_predator', 'phantom_ghost'
+    ] as const;
 
     const botPlayer: Player = {
       id: botId,
@@ -416,6 +436,7 @@ export class RoomManager {
       cosmetics: {
         shipModel: botModels[botIdx % botModels.length],
         hat: botHats[botIdx % botHats.length],
+        accessory: botAccessories[botIdx % botAccessories.length],
         trail: botTrails[botIdx % botTrails.length],
         title: botTitles[botIdx % botTitles.length],
       },
@@ -471,6 +492,13 @@ export class RoomManager {
     if (!room || room.hostId !== conn.playerId || room.status !== 'waiting') return;
 
     room.gameMode = mode;
+    if (mode === 'boss_raid') {
+      room.matchTimeRemaining = 360;
+      room.matchDuration = 360;
+    } else {
+      room.matchTimeRemaining = GAME_CONSTANTS.MATCH_DURATION_SECONDS;
+      room.matchDuration = GAME_CONSTANTS.MATCH_DURATION_SECONDS;
+    }
     this.broadcast(conn.roomCode, { type: 'room_snapshot', room });
   }
 
