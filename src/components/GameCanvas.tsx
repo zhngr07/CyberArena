@@ -35,6 +35,25 @@ import {
   drawShipAccessories,
   getTrailParticleStyle,
 } from './renderShipCosmetics.ts';
+import {
+  FloatingCombatText,
+  ShockwaveRing,
+  AfterimageGhost,
+  MuzzleFlash,
+  AmbientParticle,
+  ExtendedParticle,
+  HitMarker,
+  KillBannerNotification,
+  createAmbientField,
+  createExplosionBundle,
+  createImpactSparks,
+  drawFloatingCombatTexts,
+  drawShockwaveRings,
+  drawAfterimageGhosts,
+  drawMuzzleFlashes,
+  drawAmbientField,
+  drawHitMarker,
+} from '../services/visualEffects.ts';
 
 interface GameCanvasProps {
   localPlayerId: string;
@@ -59,18 +78,7 @@ interface GameCanvasProps {
   onExitGame?: () => void;
 }
 
-interface Particle {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  color: string;
-  alpha: number;
-  size: number;
-  life: number;
-  maxLife: number;
-  type?: 'spark' | 'smoke' | 'matrix' | 'star';
-}
+type Particle = ExtendedParticle;
 
 interface EntityTarget {
   x: number;
@@ -284,6 +292,51 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   const camera = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const screenShake = useRef<number>(0);
   const particles = useRef<Particle[]>([]);
+  const ambientParticles = useRef<AmbientParticle[]>(createAmbientField(mapId, 45));
+  const floatingTexts = useRef<FloatingCombatText[]>([]);
+  const shockwaveRings = useRef<ShockwaveRing[]>([]);
+  const afterimageGhosts = useRef<AfterimageGhost[]>([]);
+  const muzzleFlashes = useRef<MuzzleFlash[]>([]);
+  const hitMarker = useRef<HitMarker | null>(null);
+  const [killBanner, setKillBanner] = useState<KillBannerNotification | null>(null);
+  const prevPlayersState = useRef<Map<string, { health: number; shield: number; isDead: boolean; x: number; y: number }>>(new Map());
+  const prevPowerUps = useRef<Map<string, { x: number; y: number; type: string }>>(new Map());
+  const prevProjectiles = useRef<Bullet[]>([]);
+  const prevKillFeedLen = useRef<number>(killFeed.length);
+  const lastDashSnapshotTime = useRef<number>(0);
+
+  // Re-generate ambient field on map change
+  useEffect(() => {
+    ambientParticles.current = createAmbientField(mapId, 45);
+  }, [mapId]);
+
+  // Handle local player kill streak and banner alerts
+  useEffect(() => {
+    if (killFeed.length > prevKillFeedLen.current) {
+      const newKills = killFeed.slice(prevKillFeedLen.current);
+      for (const kf of newKills) {
+        if (kf.killerId === localPlayerId) {
+          setKillBanner({
+            id: kf.id || String(Date.now()),
+            victimName: kf.victimName,
+            weapon: kf.weapon,
+            timestamp: Date.now(),
+            duration: 2.8,
+          });
+          soundManager.playCoin();
+          screenShake.current = Math.max(screenShake.current, 16);
+          hitMarker.current = { time: performance.now(), isKill: true };
+        }
+      }
+    }
+    prevKillFeedLen.current = killFeed.length;
+  }, [killFeed, localPlayerId]);
+
+  useEffect(() => {
+    if (!killBanner) return;
+    const t = setTimeout(() => setKillBanner(null), 2800);
+    return () => clearTimeout(t);
+  }, [killBanner]);
 
   // Real-time FPS tracker
   const [fps, setFps] = useState<number>(60);
@@ -462,7 +515,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     [mapWidth, mapHeight]
   );
 
-  // Synchronous network tick subscription for 0ms latency reconciliation
+  // Synchronous network tick subscription for 0ms latency reconciliation & reactive VFX
   useEffect(() => {
     const unsub = networkManager.onTick((tick) => {
       // Intelligently merge incoming tick with existing player states to preserve names, colors, cosmetics, weapons
@@ -477,9 +530,196 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         if (!tick.players[id]) {
           delete updated[id];
           remoteInterpolated.current.delete(id);
+          prevPlayersState.current.delete(id);
         }
       }
       serverPlayersRef.current = updated;
+
+      // 1. Detect damage, shield impacts and deaths across all entities
+      for (const [id, p] of Object.entries(updated)) {
+        const prev = prevPlayersState.current.get(id);
+        const px = id === localPlayerId ? localPredictedPos.current.x : (p.x || 0);
+        const py = id === localPlayerId ? localPredictedPos.current.y : (p.y || 0);
+
+        if (prev) {
+          // Shield damage hit
+          const sDiff = (prev.shield ?? 100) - (p.shield ?? 100);
+          if (sDiff > 1) {
+            floatingTexts.current.push({
+              id: Math.random().toString(),
+              x: px + (Math.random() - 0.5) * 16,
+              y: py - 14,
+              text: `🛡 -${Math.round(sDiff)}`,
+              color: '#38bdf8',
+              alpha: 1,
+              scale: 1,
+              vy: -40,
+              vx: (Math.random() - 0.5) * 18,
+              life: 0,
+              maxLife: 0.85,
+            });
+            const sparks = createImpactSparks(px, py, Math.random() * Math.PI * 2, '#38bdf8', 6);
+            particles.current.push(...sparks);
+            if (id !== localPlayerId && (isMouseDown.current || touchAimCurrent.current.shooting)) {
+              hitMarker.current = { time: performance.now(), isKill: false };
+            }
+          }
+
+          // Direct hull health damage hit
+          const hDiff = (prev.health ?? 100) - (p.health ?? 100);
+          if (hDiff > 1) {
+            const isCrit = hDiff >= 35;
+            floatingTexts.current.push({
+              id: Math.random().toString(),
+              x: px + (Math.random() - 0.5) * 16,
+              y: py - 18,
+              text: isCrit ? `★ -${Math.round(hDiff)}` : `-${Math.round(hDiff)}`,
+              color: isCrit ? '#fbbf24' : '#ef4444',
+              alpha: 1,
+              scale: isCrit ? 1.3 : 1.0,
+              vy: -46,
+              vx: (Math.random() - 0.5) * 22,
+              life: 0,
+              maxLife: 0.95,
+              isCrit,
+            });
+            const sparks = createImpactSparks(px, py, Math.random() * Math.PI * 2, '#f43f5e', isCrit ? 9 : 6);
+            particles.current.push(...sparks);
+            if (id !== localPlayerId && (isMouseDown.current || touchAimCurrent.current.shooting)) {
+              hitMarker.current = { time: performance.now(), isKill: false };
+            }
+          }
+
+          // Ship elimination explosion
+          if (!prev.isDead && p.isDead) {
+            const bundle = createExplosionBundle(px, py, p.color || '#ef4444', true);
+            particles.current.push(...bundle.particles);
+            shockwaveRings.current.push(...bundle.shockwaves);
+            floatingTexts.current.push({
+              id: Math.random().toString(),
+              x: px,
+              y: py - 22,
+              text: 'ELIMINATED',
+              color: '#f43f5e',
+              alpha: 1,
+              scale: 1.25,
+              vy: -28,
+              vx: 0,
+              life: 0,
+              maxLife: 1.2,
+              isCrit: true,
+            });
+            soundManager.playExplosion();
+            if (id === localPlayerId) {
+              screenShake.current = 24;
+            }
+          }
+        }
+
+        prevPlayersState.current.set(id, {
+          health: p.health ?? 100,
+          shield: p.shield ?? 100,
+          isDead: Boolean(p.isDead),
+          x: px,
+          y: py,
+        });
+      }
+
+      // 2. Power-up collection event feedback
+      if (tick.powerUps) {
+        const currentPuMap = new Map<string, PowerUp>();
+        for (const pu of tick.powerUps) {
+          currentPuMap.set(pu.id, pu);
+        }
+        for (const [prevId, prevPu] of prevPowerUps.current.entries()) {
+          if (!currentPuMap.has(prevId)) {
+            // Power-up was consumed
+            shockwaveRings.current.push({
+              x: prevPu.x,
+              y: prevPu.y,
+              radius: 12,
+              maxRadius: 46,
+              color: '#22d3ee',
+              lineWidth: 3,
+              alpha: 0.95,
+              life: 0,
+              maxLife: 0.35,
+            });
+            for (let i = 0; i < 14; i++) {
+              const ang = Math.random() * Math.PI * 2;
+              const spd = 60 + Math.random() * 140;
+              particles.current.push({
+                x: prevPu.x,
+                y: prevPu.y,
+                vx: Math.cos(ang) * spd,
+                vy: Math.sin(ang) * spd,
+                color: '#38bdf8',
+                alpha: 1,
+                size: 2.5 + Math.random() * 3.5,
+                life: 0,
+                maxLife: 0.45,
+                type: 'spark',
+              });
+            }
+
+            // Check if local player was at the pickup location
+            const dist = Math.hypot(localPredictedPos.current.x - prevPu.x, localPredictedPos.current.y - prevPu.y);
+            if (dist < 65) {
+              let label = '+BUFF';
+              let color = '#22d3ee';
+              if (prevPu.type === 'shield') { label = '+SHIELD'; color = '#06b6d4'; }
+              else if (prevPu.type === 'quad_damage') { label = '⚡ 4X QUAD DAMAGE!'; color = '#c026d3'; }
+              else if (prevPu.type === 'speed') { label = '⚡ SPEED BOOST!'; color = '#f59e0b'; }
+              else if (prevPu.type === 'legendary_matrix') { label = '👑 MATRIX OVERCHARGE!'; color = '#eab308'; }
+
+              floatingTexts.current.push({
+                id: Math.random().toString(),
+                x: localPredictedPos.current.x,
+                y: localPredictedPos.current.y - 25,
+                text: label,
+                color,
+                alpha: 1,
+                scale: 1.25,
+                vy: -48,
+                vx: 0,
+                life: 0,
+                maxLife: 1.1,
+                isCrit: true,
+              });
+              soundManager.playPickup();
+            }
+          }
+        }
+        prevPowerUps.current = currentPuMap;
+      }
+
+      // 3. Projectile firing muzzle flashes and impact bursts
+      const currentBullets = tick.projectiles || [];
+      // Impact sparks for disappearing projectiles
+      const currentBulletIds = new Set(currentBullets.map((b) => b.id));
+      for (const oldB of prevProjectiles.current) {
+        if (!currentBulletIds.has(oldB.id)) {
+          const impactSparks = createImpactSparks(oldB.x, oldB.y, Math.atan2(oldB.vy, oldB.vx), oldB.color || '#38bdf8', 5);
+          particles.current.push(...impactSparks);
+        }
+      }
+      // Muzzle flashes for newly spawned local bullets
+      const prevBulletIds = new Set(prevProjectiles.current.map((b) => b.id));
+      for (const newB of currentBullets) {
+        if (!prevBulletIds.has(newB.id) && newB.ownerId === localPlayerId) {
+          const pAngle = localPredictedPos.current.angle;
+          muzzleFlashes.current.push({
+            x: localPredictedPos.current.x + Math.cos(pAngle) * 22,
+            y: localPredictedPos.current.y + Math.sin(pAngle) * 22,
+            angle: pAngle,
+            color: newB.color || '#38bdf8',
+            size: 16,
+            life: 0,
+            maxLife: 0.08,
+          });
+        }
+      }
+      prevProjectiles.current = currentBullets.map((b) => ({ ...b }));
 
       if (tick.obstacles && tick.obstacles.length > 0) serverObstaclesRef.current = tick.obstacles;
       if (tick.powerUps) serverPowerUpsRef.current = tick.powerUps;
@@ -544,36 +784,27 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     prevHealth.current = localPlayer.health ?? 100;
   }, [localPlayer]);
 
-  // Particle creation helper with adaptive mobile performance scaling
-  const spawnExplosionParticles = useCallback((x: number, y: number, color: string, count = 25) => {
+  // Multi-stage explosion creation helper with shockwaves and debris (optimized for 60-144 FPS)
+  const spawnExplosionParticles = useCallback((x: number, y: number, color: string, isCritical: boolean = false) => {
     const quality = mobileSettingsRef.current.graphicsQuality;
-    const maxCount = quality === 'low' ? 8 : quality === 'medium' ? 16 : 28;
-    const actualCount = Math.min(count, maxCount);
-
-    for (let i = 0; i < actualCount; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 60 + Math.random() * 260;
-      particles.current.push({
-        x,
-        y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        color,
-        alpha: 1,
-        size: 3 + Math.random() * 5,
-        life: 0,
-        maxLife: 0.35 + Math.random() * 0.4,
-      });
-    }
+    const isLow = quality === 'low';
+    const bundle = createExplosionBundle(x, y, color, isCritical, isLow);
+    particles.current.push(...bundle.particles);
+    shockwaveRings.current.push(...bundle.shockwaves);
 
     // Keep particles array bounded to prevent GC spikes and memory leakage on mobile devices
-    if (particles.current.length > 140) {
-      particles.current.splice(0, particles.current.length - 140);
+    const maxParticles = isLow ? 50 : quality === 'medium' ? 90 : 140;
+    if (particles.current.length > maxParticles) {
+      particles.current.splice(0, particles.current.length - maxParticles);
     }
   }, []);
 
-  // Spawn thruster trail particles based on cosmetic choice
+  // Spawn thruster trail particles based on cosmetic choice (auto-throttled for high FPS)
   const spawnTrailParticle = useCallback((x: number, y: number, angle: number, trailType: string) => {
+    const quality = mobileSettingsRef.current.graphicsQuality;
+    if (quality === 'low' && Math.random() > 0.5) return;
+    if (particles.current.length > 110) return;
+
     const spread = (Math.random() - 0.5) * 0.5;
     const revAngle = angle + Math.PI + spread;
     const speed = 40 + Math.random() * 80;
@@ -589,7 +820,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       alpha: 0.85,
       size: style.size,
       life: 0,
-      maxLife: 0.25 + Math.random() * 0.2,
+      maxLife: 0.22 + Math.random() * 0.16,
       type: style.type,
     });
   }, []);
@@ -856,6 +1087,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       const height = canvas.parentElement?.clientHeight || (window.innerHeight - 56);
       const isBoost = fpsBoostRef.current;
       const quality = mobileSettingsRef.current.graphicsQuality;
+      const isLowScreenQuality = quality === 'low';
 
       // Adaptive DPR scaling: low=1.0 for budget phones, med=1.25, high=up to 1.5
       const dpr = isBoost || quality === 'low'
@@ -1229,6 +1461,18 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.lineTo(activeMapWidth, y);
       }
       ctx.stroke();
+
+      // 4.5. Ambient Atmospheric Particle Field (Cosmic stardust, crystal glints, cyber glyphs)
+      drawAmbientField(
+        ctx,
+        ambientParticles.current,
+        camera.current.x,
+        camera.current.y,
+        width,
+        height,
+        dt,
+        time
+      );
 
       // 5. Draw Obstacles (Themed & Tactically Distinct per Map Type)
       const currentObstaclesList =
@@ -1876,6 +2120,22 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.beginPath();
           ctx.arc(-b.radius - 2, 0, b.radius * 0.45, 0, Math.PI * 2);
           ctx.fill();
+
+          // Missile trailing smoke puffs (throttled & bounded for smooth 60-144 FPS)
+          if (Math.random() > 0.78 && particles.current.length < 110) {
+            particles.current.push({
+              x: b.x - Math.cos(angle) * (b.radius + 3),
+              y: b.y - Math.sin(angle) * (b.radius + 3),
+              vx: -Math.cos(angle) * 35 + (Math.random() - 0.5) * 15,
+              vy: -Math.sin(angle) * 35 + (Math.random() - 0.5) * 15,
+              color: Math.random() > 0.6 ? '#f59e0b' : 'rgba(148, 163, 184, 0.45)',
+              alpha: 0.75,
+              size: 3 + Math.random() * 3,
+              life: 0,
+              maxLife: 0.25,
+              type: 'smoke',
+            });
+          }
         } else if (b.weaponType === 'mine_launcher') {
           ctx.translate(b.x, b.y);
           ctx.fillStyle = b.color;
@@ -1909,43 +2169,55 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.restore();
       }
 
-      // 8. Update & Draw Particles
-      const remainingParticles: Particle[] = [];
-      for (const p of particles.current) {
+      // 7.5. Draw Shockwave Rings, Muzzle Flashes & Afterimages (Zero-allocation in-place)
+      drawShockwaveRings(ctx, shockwaveRings.current, dt, useGlow);
+      drawMuzzleFlashes(ctx, muzzleFlashes.current, dt, useGlow);
+      drawAfterimageGhosts(ctx, afterimageGhosts.current, dt, useGlow);
+
+      // 8. Update & Draw Particles (Zero-allocation in-place compaction & batched canvas state)
+      const pList = particles.current;
+      const pLen = pList.length;
+      let pWrite = 0;
+      ctx.save();
+
+      for (let i = 0; i < pLen; i++) {
+        const p = pList[i];
         p.life += dt;
         if (p.life < p.maxLife) {
           p.x += p.vx * dt;
           p.y += p.vy * dt;
+          p.vx *= 0.96;
+          p.vy *= 0.96;
           p.alpha = 1 - p.life / p.maxLife;
 
-          ctx.save();
           ctx.fillStyle = p.color;
-          ctx.globalAlpha = p.alpha;
+          ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha));
 
-          if (p.type === 'star') {
-            ctx.translate(p.x, p.y);
+          if (p.type === 'smoke') {
+            const pProgress = p.life / p.maxLife;
             ctx.beginPath();
-            ctx.moveTo(0, -p.size);
-            ctx.lineTo(p.size * 0.3, -p.size * 0.3);
-            ctx.lineTo(p.size, 0);
-            ctx.lineTo(p.size * 0.3, p.size * 0.3);
-            ctx.lineTo(0, p.size);
-            ctx.lineTo(-p.size * 0.3, p.size * 0.3);
-            ctx.lineTo(-p.size, 0);
-            ctx.lineTo(-p.size * 0.3, -p.size * 0.3);
-            ctx.closePath();
+            ctx.arc(p.x, p.y, p.size * (1 + pProgress * 1.5), 0, Math.PI * 2);
             ctx.fill();
+          } else if (p.type === 'shrapnel') {
+            p.rotation = (p.rotation || 0) + (p.vRot || 4) * dt;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rotation);
+            ctx.fillRect(-p.size, -p.size * 0.4, p.size * 2, p.size * 0.8);
+            ctx.restore();
+          } else if (p.type === 'star') {
+            ctx.fillRect(p.x - p.size * 0.5, p.y - p.size * 0.5, p.size, p.size);
           } else {
             ctx.beginPath();
             ctx.arc(p.x, p.y, Math.max(0.5, p.size * (1 - p.life / p.maxLife)), 0, Math.PI * 2);
             ctx.fill();
           }
-          ctx.restore();
 
-          remainingParticles.push(p);
+          pList[pWrite++] = p;
         }
       }
-      particles.current = remainingParticles;
+      pList.length = pWrite;
+      ctx.restore();
 
       // 9. Draw Players (Ships, Hats, Titles, Vitals)
       const renderPlayers = serverPlayersRef.current;
@@ -2028,23 +2300,37 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           if (useGlow) ctx.shadowBlur = 0;
         }
 
-        // Dash Glow Box
+        const shipColor = p.color || '#06b6d4';
+        const cosmetics = p.cosmetics || { shipModel: 'phantom', hat: 'none', trail: 'default', title: 'rookie' };
+
+        // Cybernetic Dash Trail & Afterimage Snapshots
         if (p.isDashing) {
+          if (time - lastDashSnapshotTime.current > 40) {
+            lastDashSnapshotTime.current = time;
+            afterimageGhosts.current.push({
+              x: px,
+              y: py,
+              angle: pAngle,
+              shipModel: (cosmetics.shipModel as ShipModelType) || 'phantom',
+              color: shipColor || '#06b6d4',
+              alpha: 0.65,
+              life: 0,
+              maxLife: 0.28,
+            });
+          }
+          const dashPulse = (Math.sin(time * 0.02) + 1) * 3;
           ctx.strokeStyle = '#ec4899';
-          ctx.lineWidth = 4;
+          ctx.lineWidth = 3.5;
           if (useGlow) {
             ctx.shadowColor = '#ec4899';
-            ctx.shadowBlur = 14;
+            ctx.shadowBlur = 16;
           }
-          ctx.strokeRect(-22, -22, 44, 44);
+          ctx.strokeRect(-22 - dashPulse, -22 - dashPulse, 44 + dashPulse * 2, 44 + dashPulse * 2);
           if (useGlow) ctx.shadowBlur = 0;
         }
 
         // Rotate for ship heading
         ctx.rotate(pAngle);
-
-        const shipColor = p.color || '#06b6d4';
-        const cosmetics = p.cosmetics || { shipModel: 'phantom', hat: 'none', trail: 'default', title: 'rookie' };
 
         // DRAW CUSTOM PROCEDURAL SHIP HULL SILHOUETTE (ALL 25 SHIPS)
         drawProceduralShipHull(ctx, cosmetics.shipModel as ShipModelType, shipColor, useGlow);
@@ -2330,8 +2616,47 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           }
         }
       }
+
+      // 11c. Draw Floating Combat Texts (Zero-allocation in-place)
+      drawFloatingCombatTexts(ctx, floatingTexts.current, dt, !isLowScreenQuality);
         } finally {
           ctx.restore(); // [RESTORE 2: camera translation]
+        }
+
+        // SCREEN SPACE POST-PROCESSING & HUD OVERLAYS
+        const screenNow = performance.now();
+
+        // 1. Low Hull Integrity Critical Pulse Indicator (Zero-gradient GPU-friendly)
+        const lp = serverPlayersRef.current[localPlayerId] || players[localPlayerId];
+        if (lp && !lp.isDead && (lp.health ?? 100) < 30) {
+          const hpRatio = Math.max(0, (lp.health ?? 100) / 30);
+          const pulse = (Math.sin(screenNow * 0.008) + 1) * 0.5;
+          const vignetteAlpha = (0.18 + (1 - hpRatio) * 0.3) * (0.6 + pulse * 0.4);
+
+          ctx.save();
+          // Ultra-fast perimeter edge warning borders
+          const edgeH = 5;
+          ctx.fillStyle = `rgba(239, 68, 68, ${vignetteAlpha})`;
+          ctx.fillRect(0, 0, width, edgeH);
+          ctx.fillRect(0, height - edgeH, width, edgeH);
+          ctx.fillRect(0, 0, edgeH, height);
+          ctx.fillRect(width - edgeH, 0, edgeH, height);
+
+          // Subtle overall crimson tint without expensive dynamic radial gradients
+          ctx.fillStyle = `rgba(244, 63, 94, ${vignetteAlpha * 0.08})`;
+          ctx.fillRect(0, 0, width, height);
+          ctx.restore();
+        }
+
+        // 2. Crosshair Hit Marker
+        if (hitMarker.current) {
+          const hmX = showTouchControls
+            ? width / 2 + Math.cos(touchAimCurrent.current.angle) * 70
+            : mousePos.current.x;
+          const hmY = showTouchControls
+            ? height / 2 + Math.sin(touchAimCurrent.current.angle) * 70
+            : mousePos.current.y;
+          drawHitMarker(ctx, hmX, hmY, hitMarker.current, screenNow);
         }
       } finally {
         ctx.restore(); // [RESTORE 1: DPR scale - 100% leak-proof!]
@@ -2436,6 +2761,27 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     >
       {/* Game Canvas */}
       <canvas ref={canvasRef} className="w-full h-full block cursor-crosshair" />
+
+      {/* ANIMATED KILL ANNOUNCEMENT BANNER */}
+      {killBanner && (
+        <div className="absolute top-14 sm:top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 animate-in fade-in zoom-in-95">
+          <div className="px-5 py-2.5 rounded-2xl bg-slate-950/95 border-2 border-rose-500/80 shadow-[0_0_35px_rgba(244,63,94,0.55)] backdrop-blur-md flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-500/60 flex items-center justify-center text-rose-400 font-black text-xl shadow-[0_0_12px_rgba(244,63,94,0.4)]">
+              ☠️
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-orbitron font-extrabold tracking-widest text-rose-400 uppercase">
+                {lang === 'ru' ? 'ВРАГ УНИЧТОЖЕН' : 'PILOT ELIMINATED'}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-orbitron font-black text-white">{killBanner.victimName}</span>
+                <span className="text-[10px] text-slate-400 font-mono">[{killBanner.weapon}]</span>
+                <span className="text-amber-400 text-xs font-orbitron font-bold ml-1">+100 PTS</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* PORTRAIT ORIENTATION WARNING FOR MOBILE & TABLETS */}
       {isPortrait && (isMobile || isTablet) && !portraitDismissed && (
