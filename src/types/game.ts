@@ -399,7 +399,7 @@ export interface BossState {
   maxHealth: number;
   shield: number;
   maxShield: number;
-  phase: 1 | 2 | 3;
+  phase: 1 | 2 | 3 | 4;
   isEnraged: boolean;
   radius: number;
   targetId?: string;

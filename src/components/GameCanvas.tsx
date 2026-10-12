@@ -558,8 +558,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               life: 0,
               maxLife: 0.85,
             });
-            const sparks = createImpactSparks(px, py, Math.random() * Math.PI * 2, '#38bdf8', 6);
-            particles.current.push(...sparks);
+            const sparks = createImpactSparks(px, py, Math.random() * Math.PI * 2, '#38bdf8', 4);
+            if (particles.current.length < 110) particles.current.push(...sparks);
             if (id !== localPlayerId && (isMouseDown.current || touchAimCurrent.current.shooting)) {
               hitMarker.current = { time: performance.now(), isKill: false };
             }
@@ -569,22 +569,24 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           const hDiff = (prev.health ?? 100) - (p.health ?? 100);
           if (hDiff > 1) {
             const isCrit = hDiff >= 35;
-            floatingTexts.current.push({
-              id: Math.random().toString(),
-              x: px + (Math.random() - 0.5) * 16,
-              y: py - 18,
-              text: isCrit ? `★ -${Math.round(hDiff)}` : `-${Math.round(hDiff)}`,
-              color: isCrit ? '#fbbf24' : '#ef4444',
-              alpha: 1,
-              scale: isCrit ? 1.3 : 1.0,
-              vy: -46,
-              vx: (Math.random() - 0.5) * 22,
-              life: 0,
-              maxLife: 0.95,
-              isCrit,
-            });
-            const sparks = createImpactSparks(px, py, Math.random() * Math.PI * 2, '#f43f5e', isCrit ? 9 : 6);
-            particles.current.push(...sparks);
+            if (floatingTexts.current.length < 25) {
+              floatingTexts.current.push({
+                id: Math.random().toString(),
+                x: px + (Math.random() - 0.5) * 16,
+                y: py - 18,
+                text: isCrit ? `★ -${Math.round(hDiff)}` : `-${Math.round(hDiff)}`,
+                color: isCrit ? '#fbbf24' : '#ef4444',
+                alpha: 1,
+                scale: isCrit ? 1.3 : 1.0,
+                vy: -46,
+                vx: (Math.random() - 0.5) * 22,
+                life: 0,
+                maxLife: 0.95,
+                isCrit,
+              });
+            }
+            const sparks = createImpactSparks(px, py, Math.random() * Math.PI * 2, '#f43f5e', isCrit ? 6 : 4);
+            if (particles.current.length < 110) particles.current.push(...sparks);
             if (id !== localPlayerId && (isMouseDown.current || touchAimCurrent.current.shooting)) {
               hitMarker.current = { time: performance.now(), isKill: false };
             }
@@ -2473,16 +2475,28 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           ctx.fill();
         }
 
-        // Pulsing Void Core Reactor
-        const coreSize = 18 + Math.sin(renderTime * 0.008) * 4;
-        ctx.fillStyle = currentBoss.isEnraged ? '#f43f5e' : '#ec4899';
+        // Pulsing Void Core Reactor (Hyper-pulsing in Phase 4)
+        const isPhase4 = currentBoss.phase === 4;
+        const corePulseSpeed = isPhase4 ? 0.02 : 0.008;
+        const coreSize = (isPhase4 ? 24 : 18) + Math.sin(renderTime * corePulseSpeed) * (isPhase4 ? 7 : 4);
+        ctx.fillStyle = isPhase4 ? '#ff0055' : currentBoss.isEnraged ? '#f43f5e' : '#ec4899';
         if (useGlow) {
-          ctx.shadowColor = currentBoss.isEnraged ? '#f43f5e' : '#ec4899';
-          ctx.shadowBlur = 20;
+          ctx.shadowColor = isPhase4 ? '#ff0055' : currentBoss.isEnraged ? '#f43f5e' : '#ec4899';
+          ctx.shadowBlur = isPhase4 ? 30 : 20;
         }
         ctx.beginPath();
         ctx.arc(0, 0, coreSize, 0, Math.PI * 2);
         ctx.fill();
+
+        // Phase 4 Cataclysmic Berserk Corona Ring
+        if (isPhase4) {
+          ctx.strokeStyle = '#f43f5e';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          const coronaR = currentBoss.radius + 14 + Math.sin(renderTime * 0.015) * 6;
+          ctx.arc(0, 0, coronaR, 0, Math.PI * 2);
+          ctx.stroke();
+        }
         if (useGlow) ctx.shadowBlur = 0;
 
         ctx.restore();
@@ -2493,9 +2507,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
         ctx.font = 'bold 14px Orbitron, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillStyle = currentBoss.isEnraged ? '#f43f5e' : '#38bdf8';
+        ctx.fillStyle = isPhase4 ? '#ff0055' : currentBoss.isEnraged ? '#f43f5e' : '#38bdf8';
+        const phasePrefix = isPhase4 ? '🔥 ФАЗА 4: ' : currentBoss.phase === 3 ? '⚡ Ф3: ' : currentBoss.phase === 2 ? '🛡️ Ф2: ' : '';
         ctx.fillText(
-          `${currentBoss.name} [${currentBoss.attackName || 'АТАКА'}]`,
+          `${currentBoss.name} [${phasePrefix}${currentBoss.attackName || 'АТАКА'}]`,
           0,
           -currentBoss.radius - 28
         );
@@ -2871,8 +2886,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                   <span className="flex items-center gap-1.5 truncate">
                     ⚔️ {activeBoss.name}
                   </span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-rose-950 text-rose-400 border border-rose-700">
-                    {activeBoss.phase === 3 ? '⚡ ФАЗА 3' : activeBoss.phase === 2 ? '🛡️ ФАЗА 2' : '💥 ФАЗА 1'}
+                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono border ${activeBoss.phase === 4 ? 'bg-rose-900/90 text-rose-200 border-rose-500 animate-pulse' : 'bg-rose-950 text-rose-400 border-rose-700'}`}>
+                    {activeBoss.phase === 4 ? (lang === 'ru' ? '🔥 ФАЗА 4 (БЕРСЕРК)' : '🔥 PHASE 4 (BERSERK)') : activeBoss.phase === 3 ? (lang === 'ru' ? '⚡ ФАЗА 3' : '⚡ PHASE 3') : activeBoss.phase === 2 ? (lang === 'ru' ? '🛡️ ФАЗА 2' : '🛡️ PHASE 2') : (lang === 'ru' ? '💥 ФАЗА 1' : '💥 PHASE 1')}
                   </span>
                 </div>
                 {/* Shield Bar */}
@@ -3116,6 +3131,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 <div className="flex items-center justify-between text-[9px] font-orbitron text-rose-300">
                   <span className="truncate">⚔️ {activeBoss.name || 'БОСС'}</span>
                   <span className="font-mono text-[8px] text-cyan-300">
+                    {activeBoss.phase === 4 ? '🔥 Ф-4 ' : activeBoss.phase === 3 ? '⚡ Ф-3 ' : activeBoss.phase === 2 ? '🛡️ Ф-2 ' : '💥 Ф-1 '}
                     {Math.round((activeBoss.health / activeBoss.maxHealth) * 100)}%
                   </span>
                 </div>

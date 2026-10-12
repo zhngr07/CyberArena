@@ -180,13 +180,12 @@ export class GameEngine {
     if (this.room.gameMode === 'boss_raid') {
       this.room.matchTimeRemaining = 360;
       this.room.matchDuration = 360;
-      // Rebalanced Beta 0.8 Boss Raid: Base 1,000 HP and 300 Shield for solo, +350 HP / +100 Shield per extra player
-      const playerCount = Math.max(1, Object.keys(this.room.players).length);
-      const bossHp = 1000 + (playerCount - 1) * 350;
-      const bossShield = 300 + (playerCount - 1) * 100;
+      // Boss Raid: 30,000 HP and 2,000 Shield (Total effective HP: 32,000)
+      const bossHp = 30000;
+      const bossShield = 2000;
       this.room.boss = {
         id: 'boss_omega',
-        name: 'ТИТАН ПУСТОТЫ • ОМЕГА [BETA 0.8]',
+        name: 'ТИТАН ПУСТОТЫ • ОМЕГА',
         x: this.map.width / 2,
         y: this.map.height / 2,
         vx: 0,
@@ -678,15 +677,16 @@ export class GameEngine {
         for (const p of Object.values(this.room.players)) {
           if (p.isDead) continue;
           const isWormholeSurge = this.currentEventState?.type === 'WORMHOLE_SURGE' && this.currentEventState.phase === 'active';
-          const cd = isWormholeSurge ? 0 : (this.portalCooldowns.get(p.id) || 0);
+          const cd = this.portalCooldowns.get(p.id) || 0;
           if (now < cd) continue;
 
           const dist = Math.hypot(srcX - p.x, srcY - p.y);
           if (dist < obs.width / 2 + GAME_CONSTANTS.PLAYER_RADIUS) {
-            // Wormhole Jump!
-            p.x = dstX;
-            p.y = dstY;
-            this.portalCooldowns.set(p.id, isWormholeSurge ? now + 250 : now + 1400); // Instant during surge
+            // Wormhole Jump: translate and offset outside target portal trigger to avoid infinite bounce
+            const exitAngle = Math.atan2(p.vy, p.vx) || (dstX < this.map.width / 2 ? 0 : Math.PI);
+            p.x = dstX + Math.cos(exitAngle) * (targetPortal.width / 2 + GAME_CONSTANTS.PLAYER_RADIUS + 12);
+            p.y = dstY + Math.sin(exitAngle) * (targetPortal.height / 2 + GAME_CONSTANTS.PLAYER_RADIUS + 12);
+            this.portalCooldowns.set(p.id, isWormholeSurge ? now + 400 : now + 1200);
           }
         }
       }
@@ -1110,6 +1110,10 @@ export class GameEngine {
 
   // --- PROJECTILES & COLLISION RESOLUTION ---
   private updateProjectiles(now: number, dt: number) {
+    // Safety cap: prune oldest projectiles if total exceeds threshold to prevent lag spikes
+    if (this.room.projectiles.length > 110) {
+      this.room.projectiles = this.room.projectiles.slice(this.room.projectiles.length - 110);
+    }
     const remainingBullets: Bullet[] = [];
 
     for (const b of this.room.projectiles) {
@@ -1302,6 +1306,14 @@ export class GameEngine {
   }
 
   private spawnSplitFragments(parentBullet: Bullet, now: number) {
+    if (
+      parentBullet.id.startsWith('frag_') ||
+      parentBullet.id.startsWith('prism_') ||
+      (parentBullet as any).isShard ||
+      this.room.projectiles.length > 70
+    ) {
+      return; // Prevent infinite fragment splitting and projectile spam
+    }
     const count = 3;
     const baseAngle = Math.atan2(parentBullet.vy, parentBullet.vx);
     for (let i = 0; i < count; i++) {
@@ -1311,39 +1323,50 @@ export class GameEngine {
         ownerId: parentBullet.ownerId,
         ownerName: parentBullet.ownerName,
         color: parentBullet.color,
-        x: parentBullet.x,
-        y: parentBullet.y,
+        x: parentBullet.x + Math.cos(angle) * 12,
+        y: parentBullet.y + Math.sin(angle) * 12,
         vx: Math.cos(angle) * 650,
         vy: Math.sin(angle) * 650,
         damage: Math.round(parentBullet.damage * 0.4),
         radius: 4,
         weaponType: parentBullet.weaponType,
         createdAt: now,
-        expiresAt: now + 900,
-      });
+        expiresAt: now + 700,
+        isShard: true,
+      } as any);
     }
   }
 
   private spawnPrismRefractionShards(parentBullet: Bullet, now: number) {
+    if (
+      parentBullet.id.startsWith('prism_') ||
+      parentBullet.id.startsWith('frag_') ||
+      (parentBullet as any).isShard ||
+      this.room.projectiles.length > 60
+    ) {
+      return; // Crucial guard: Never recursively refract shards, preventing exponential server freeze
+    }
     const count = 3;
     const baseAngle = Math.atan2(-parentBullet.vy, -parentBullet.vx);
     for (let i = 0; i < count; i++) {
       const angle = baseAngle + (i - 1) * 0.65;
+      const spawnOffset = 18; // Advance shard beyond obstacle boundary to avoid instant re-collision
       this.room.projectiles.push({
         id: `prism_${parentBullet.id}_${i}_${Math.random().toString(36).substring(2, 5)}`,
         ownerId: parentBullet.ownerId,
         ownerName: parentBullet.ownerName,
         color: '#34d399',
-        x: parentBullet.x,
-        y: parentBullet.y,
-        vx: Math.cos(angle) * 720,
-        vy: Math.sin(angle) * 720,
-        damage: Math.round(parentBullet.damage * 0.45),
+        x: parentBullet.x + Math.cos(angle) * spawnOffset,
+        y: parentBullet.y + Math.sin(angle) * spawnOffset,
+        vx: Math.cos(angle) * 700,
+        vy: Math.sin(angle) * 700,
+        damage: Math.round(parentBullet.damage * 0.4),
         radius: 3.5,
         weaponType: parentBullet.weaponType,
         createdAt: now,
-        expiresAt: now + 750,
-      });
+        expiresAt: now + 500, // Quick decay to keep server and client fast
+        isShard: true,
+      } as any);
     }
   }
 
@@ -1806,13 +1829,13 @@ export class GameEngine {
       boss.angle += (targetAngle - boss.angle) * 0.05;
 
       // Boss movement: drift toward player but maintain arena presence
-      const baseSpeed = boss.isEnraged ? 85 : 55;
+      const baseSpeed = boss.phase === 4 ? 120 : boss.isEnraged ? 85 : 55;
       const moveX = Math.cos(targetAngle);
       const moveY = Math.sin(targetAngle);
       boss.vx += (moveX * baseSpeed - boss.vx) * 0.04;
       boss.vy += (moveY * baseSpeed - boss.vy) * 0.04;
     } else {
-      boss.angle += 0.01;
+      boss.angle += boss.phase === 4 ? 0.03 : 0.01;
     }
 
     boss.x += boss.vx * dt;
@@ -1828,11 +1851,17 @@ export class GameEngine {
     // Process Mini-NPC minions (spawn, movement, attack, kamikaze)
     if (!boss.minions) boss.minions = [];
 
-    // Structured wave spawning: max 4 minions, strictly relative to boss position (120-180 distance), obstacle-safe
-    if (boss.minions.length < 4 && now >= this.nextBossMinionWaveTime) {
-      this.nextBossMinionWaveTime = now + 16000; // 16-second wave intervals
+    // Structured wave spawning: max 4 minions (max 5 in phase 4), obstacle-safe
+    const maxMinions = boss.phase === 4 ? 5 : 4;
+    const waveInterval = boss.phase === 4 ? 9000 : 16000;
+    if (boss.minions.length < maxMinions && now >= this.nextBossMinionWaveTime) {
+      this.nextBossMinionWaveTime = now + waveInterval;
       const minionType: 'drone' | 'kamikaze' | 'shield_guard' =
-        boss.phase === 3 ? 'kamikaze' : (Math.random() < 0.5 ? 'drone' : 'shield_guard');
+        boss.phase === 4
+          ? (Math.random() < 0.65 ? 'kamikaze' : 'shield_guard')
+          : boss.phase === 3
+          ? 'kamikaze'
+          : (Math.random() < 0.5 ? 'drone' : 'shield_guard');
       const minionHp = minionType === 'shield_guard' ? 120 : minionType === 'kamikaze' ? 75 : 95;
       const minionRadius = minionType === 'shield_guard' ? 22 : 18;
 
@@ -1972,7 +2001,58 @@ export class GameEngine {
     if (!this.room.boss || this.room.boss.health <= 0) return;
     const boss = this.room.boss;
 
-    if (boss.phase === 3) {
+    if (boss.phase === 4) {
+      // PHASE 4: FINAL BERSERK APOCALYPSE (5000 -> 0 HP)
+      // Rapid alternation between Cataclysmic Radial Shrapnel Barrage and Focused Torpedo Volley
+      const subAttack = (Math.floor(now / 1400) % 2 === 0);
+      if (subAttack) {
+        boss.attackName = 'КАТАКЛИЗМ ПУСТОТЫ';
+        const count = 20;
+        const spin = (now * 0.003);
+        for (let i = 0; i < count; i++) {
+          const ang = (i / count) * Math.PI * 2 + spin;
+          const speed = 390;
+          this.room.projectiles.push({
+            id: `boss_cata_${now}_${i}`,
+            ownerId: 'boss',
+            ownerName: 'ТИТАН ПУСТОТЫ',
+            weaponType: 'plasma',
+            x: boss.x + Math.cos(ang) * (boss.radius + 15),
+            y: boss.y + Math.sin(ang) * (boss.radius + 15),
+            vx: Math.cos(ang) * speed,
+            vy: Math.sin(ang) * speed,
+            damage: 22,
+            color: '#f43f5e',
+            radius: 11,
+            createdAt: now,
+            expiresAt: now + 3200,
+          });
+        }
+      } else {
+        boss.attackName = 'СИНГУЛЯРНЫЙ ШТОРМ';
+        const baseAng = target ? Math.atan2(target.y - boss.y, target.x - boss.x) : boss.angle;
+        for (let i = 0; i < 6; i++) {
+          const fanAngle = baseAng + (i - 2.5) * 0.32;
+          this.room.projectiles.push({
+            id: `boss_storm_${now}_${i}`,
+            ownerId: 'boss',
+            ownerName: 'ТИТАН ПУСТОТЫ',
+            weaponType: 'missile_launcher',
+            x: boss.x + Math.cos(fanAngle) * (boss.radius + 18),
+            y: boss.y + Math.sin(fanAngle) * (boss.radius + 18),
+            vx: Math.cos(fanAngle) * 350,
+            vy: Math.sin(fanAngle) * 350,
+            damage: 26,
+            color: '#fb7185',
+            radius: 10,
+            createdAt: now,
+            expiresAt: now + 3200,
+            explosionRadius: 75,
+          });
+        }
+      }
+      this.nextBossAttackTime = now + 1400; // Rapid cadence
+    } else if (boss.phase === 3) {
       // PHASE 3: HYPER NOVA BARRAGE (16 projectiles in 360-degree circle)
       boss.attackName = 'ГИПЕР-НОВА';
       const count = 16;
@@ -2068,14 +2148,24 @@ export class GameEngine {
       b.health = Math.max(0, b.health - effectiveDamage);
     }
 
-    const hpRatio = b.health / b.maxHealth;
-    if (hpRatio <= 0.33) {
+    // Phase progression based on total effective HP (Health + Shield, starting at 32,000):
+    // Phase 1: 32,000 -> 25,000
+    // Phase 2: 25,000 -> 15,000
+    // Phase 3: 15,000 -> 5,000
+    // Phase 4 (Hard Final Berserk): 5,000 -> 0
+    const totalEffectiveHp = b.health + b.shield;
+    if (totalEffectiveHp <= 5000) {
+      b.phase = 4;
+      b.isEnraged = true;
+    } else if (totalEffectiveHp <= 15000) {
       b.phase = 3;
       b.isEnraged = true;
-    } else if (hpRatio <= 0.66) {
+    } else if (totalEffectiveHp <= 25000) {
       b.phase = 2;
+      b.isEnraged = false;
     } else {
       b.phase = 1;
+      b.isEnraged = false;
     }
 
     b.damageContribution[attackerId] = (b.damageContribution[attackerId] || 0) + damage;
