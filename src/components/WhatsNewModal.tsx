@@ -30,6 +30,9 @@ import {
   ShieldAlert,
   FlameKindling,
   History,
+  Map as MapIcon,
+  Target,
+  ShieldCheck,
 } from 'lucide-react';
 import { Language } from '../data/translations.ts';
 import { MODIFIER_METAS } from '../data/weapons.ts';
@@ -41,6 +44,8 @@ interface WhatsNewModalProps {
 }
 
 type TabType =
+  | 'overview_08'
+  | 'arenas_08'
   | 'overview_07'
   | 'cyber_shop'
   | 'boss_overhaul'
@@ -52,7 +57,7 @@ type TabType =
   | 'archive_06';
 
 export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onToggleLang }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('overview_07');
+  const [activeTab, setActiveTab] = useState<TabType>('overview_08');
   const [currentLang, setCurrentLang] = useState<Language>(lang);
 
   const isRu = currentLang === 'ru';
@@ -77,16 +82,16 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="font-orbitron font-black text-sm sm:text-lg text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-pink-400">
-                  {isRu ? 'ЧТО НОВОГО? • BETA 0.7: «ТИТАНЫ КИБЕРПАНКА»' : "WHAT'S NEW? • BETA 0.7: TITANS OF CYBERPUNK"}
+                  {isRu ? 'ЧТО НОВОГО? • BETA 0.8: COMBAT REBALANCE & ARENA EVOLUTION' : "WHAT'S NEW? • BETA 0.8: COMBAT REBALANCE & ARENA EVOLUTION"}
                 </h2>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-pink-500/20 text-pink-300 border border-pink-500/40 animate-pulse">
-                  {isRu ? 'ОБНОВЛЕНИЕ 0.7' : 'UPDATE 0.7'}
+                  {isRu ? 'ОБНОВЛЕНИЕ 0.8' : 'UPDATE 0.8'}
                 </span>
               </div>
               <p className="text-[11px] font-mono text-cyan-400/80">
                 {isRu
-                  ? '25+ Кораблей • Шляпы & Обвесы • Мобильная Версия • Усиленный Босс (6 мин) & Мини-НПС • Зал Славы'
-                  : '25+ Ships • Hats & Accessories • Dedicated Mobile Edition • 6-Min Boss & Mini-NPCs • Leaderboard RP'}
+                  ? '5 Новых Арен • Удаление Homing, Piercing & Fire Rate • Ребаланс Оружия • Чистый Скилловый Бой'
+                  : '5 New Arenas • Removed Homing, Piercing & Fire Rate • Weapon Rebalance • Pure Skill-Based Combat'}
               </p>
             </div>
           </div>
@@ -115,15 +120,51 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
         {/* Navigation Tabs */}
         <div className="flex items-center space-x-1 px-3 sm:px-6 py-2 border-b border-slate-800 bg-slate-950/40 overflow-x-auto no-scrollbar">
           <button
-            onClick={() => setActiveTab('overview_07')}
+            onClick={() => setActiveTab('overview_08')}
             className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeTab === 'overview_07'
+              activeTab === 'overview_08'
                 ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
             }`}
           >
-            <Compass className="w-3.5 h-3.5" />
-            <span>{isRu ? '🚀 Обзор 0.7' : '🚀 Overview 0.7'}</span>
+            <Flame className="w-3.5 h-3.5 text-pink-400" />
+            <span>{isRu ? '🔥 Обзор Beta 0.8' : '🔥 Overview Beta 0.8'}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('arenas_08')}
+            className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
+              activeTab === 'arenas_08'
+                ? 'bg-teal-500/20 text-teal-300 border border-teal-400 shadow-[0_0_10px_rgba(20,184,166,0.3)]'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <MapIcon className="w-3.5 h-3.5 text-teal-400" />
+            <span>{isRu ? '🌌 5 Новых Арен' : '🌌 5 New Arenas'}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('weapons')}
+            className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
+              activeTab === 'weapons'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 text-cyan-400" />
+            <span>{isRu ? '⚔️ 11 Пушек & Баланс' : '⚔️ 11 Weapons & Balance'}</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('modifiers')}
+            className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
+              activeTab === 'modifiers'
+                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.3)]'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-indigo-400" />
+            <span>{isRu ? '✨ 11 Модулей (Чистый Скилл)' : '✨ 11 Modules (Skill)'}</span>
           </button>
 
           <button
@@ -175,57 +216,326 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
           </button>
 
           <button
-            onClick={() => setActiveTab('animations')}
+            onClick={() => setActiveTab('overview_07')}
             className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeTab === 'animations'
-                ? 'bg-pink-500/20 text-pink-300 border border-pink-400 shadow-[0_0_10px_rgba(236,72,153,0.3)]'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-            <span>{isRu ? '✨ Плавные Анимации' : '✨ Fluid Animations'}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('weapons')}
-            className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeTab === 'weapons'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.3)]'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5 text-cyan-400" />
-            <span>{isRu ? '9 Пушек' : '9 Weapons'}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('modifiers')}
-            className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeTab === 'modifiers'
-                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.3)]'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-indigo-400" />
-            <span>{isRu ? '14 Модов' : '14 Modifiers'}</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('archive_06')}
-            className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
-              activeTab === 'archive_06'
+              activeTab === 'overview_07'
                 ? 'bg-slate-700/40 text-slate-200 border border-slate-500 shadow-sm'
                 : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/40'
             }`}
           >
             <History className="w-3.5 h-3.5" />
-            <span>{isRu ? 'Архив (0.6)' : 'Archive (0.6)'}</span>
+            <span>{isRu ? '📜 Архив (0.7)' : '📜 Archive (0.7)'}</span>
           </button>
         </div>
 
         {/* Tab Content Body */}
         <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 text-slate-200">
-          {/* TAB 1: OVERVIEW 0.7 */}
+          {/* TAB: OVERVIEW 0.8 */}
+          {activeTab === 'overview_08' && (
+            <div className="space-y-4">
+              {/* Hero Banner */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-cyan-950/70 via-purple-950/60 to-pink-950/70 border border-cyan-400/50 shadow-[0_0_30px_rgba(6,182,212,0.25)] relative overflow-hidden">
+                <div className="flex items-center gap-2 mb-2">
+                  <Flame className="w-5 h-5 text-pink-400 animate-pulse" />
+                  <h3 className="text-base sm:text-xl font-orbitron font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-teal-200 to-pink-300">
+                    {isRu
+                      ? 'BETA 0.8: COMBAT REBALANCE & ARENA EVOLUTION'
+                      : 'BETA 0.8: COMBAT REBALANCE & ARENA EVOLUTION'}
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-pink-500/20 text-pink-300 border border-pink-500/40">
+                    {isRu ? 'НОВАЯ ОБНОВА' : 'NEW UPDATE'}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-3xl">
+                  {isRu
+                    ? 'Масштабная эволюция CyberArena! В Beta 0.8 соревновательный баланс выходит на новый уровень: мы полностью удалили казуальные модификаторы (самонаводку, пробивание сквозь стены и бонусную скорострельность), искажавшие честный бой, и внедрили 5 разнообразных тактических арен с уникальной космической архитектурой, разрушаемыми плазменными ядрами и кинетическими буферами!'
+                    : 'The defining competitive evolution of CyberArena! In Beta 0.8, the battlefield is transformed: we have permanently excised broken casual modifiers (Homing, Wall Penetration, and Fire Rate boost) that eroded spatial counterplay, and unveiled 5 high-tactical arena battlegrounds with unique space architecture, destructible plasma cores, and kinetic bumpers!'}
+                </p>
+              </div>
+
+              {/* 4 Pillars of Beta 0.8 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* Pillar 1: Arena Evolution */}
+                <div className="p-4 rounded-xl bg-slate-950/80 border border-teal-500/40 hover:border-teal-400/70 transition-all shadow-md">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center text-teal-400">
+                      <MapIcon className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-orbitron font-bold text-xs sm:text-sm text-teal-300">
+                        {isRu ? '1. Arena Evolution — 5 Новых Арен' : '1. Arena Evolution — 5 New Arenas'}
+                      </h4>
+                      <span className="text-[10px] font-mono text-teal-400/80">
+                        {isRu ? 'Уникальная геометрия и тактика' : 'Unique geometry & layouts'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {isRu
+                      ? 'Карты больше не выглядят однотипно: Туманность с фланговыми коридорами, тесное Поле Астероидов, симметричная Орбитальная Станция, Кристальная Пустошь с острыми углами для рикошетов и Арена Пустоты для скоростного снайпинга (+ рейд-сектор 4800x4800).'
+                      : 'Battlegrounds are no longer uniform: Nebula Arena with flanking curves, dense Asteroid Field, geometric Orbital Station, Crystal Expanse with acute ricochet angles, and high-speed Void Arena (+ 4800x4800 Titan raid).'}
+                  </p>
+                </div>
+
+                {/* Pillar 2: Removed Modifiers */}
+                <div className="p-4 rounded-xl bg-slate-950/80 border border-rose-500/40 hover:border-rose-400/70 transition-all shadow-md">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-rose-500/20 flex items-center justify-center text-rose-400">
+                      <ShieldAlert className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-orbitron font-bold text-xs sm:text-sm text-rose-300">
+                        {isRu ? '2. Удаление 3 Модификаторов' : '2. Removed 3 Casual Modifiers'}
+                      </h4>
+                      <span className="text-[10px] font-mono text-rose-400/80">
+                        {isRu ? 'Конец автонаводке и выстрелам сквозь стены' : 'No auto-aim or wall shoots'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {isRu
+                      ? 'Homing (Самонаводка), Wall Penetration (Пробивание стен) и Fire Rate (Скорострельность) полностью удалены! Снаряды больше не преследуют цель за спину и надёжно блокируются любыми стенами. Сервер отсекает устаревшие модификаторы.'
+                      : 'Homing, Wall Penetration, and Fire Rate modifiers have been permanently purged! Projectiles can no longer steer behind cover or pierce barriers. The server strictly filters legacy modifier requests.'}
+                  </p>
+                </div>
+
+                {/* Pillar 3: Weapon Rebalance */}
+                <div className="p-4 rounded-xl bg-slate-950/80 border border-cyan-500/40 hover:border-cyan-400/70 transition-all shadow-md">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center text-cyan-400">
+                      <Target className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-orbitron font-bold text-xs sm:text-sm text-cyan-300">
+                        {isRu ? '3. Ребаланс Оружия (Railgun 52 dmg)' : '3. Weapon Rebalance (Railgun 52 dmg)'}
+                      </h4>
+                      <span className="text-[10px] font-mono text-cyan-400/80">
+                        {isRu ? 'Точный снайпинг и честный урон' : 'High-precision skill gunplay'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {isRu
+                      ? 'Railgun превращен в честную снайперскую винтовку (52 урона, останавливается о стены). Перебалансированы Plasma Blaster, Spread Laser, Burst Cannon, Missile Launcher и Shotgun — каждая пушка имеет чёткую роль и контрпики.'
+                      : 'Railgun is now an authentic skill sniper slug (52 damage, strictly stopped by solid walls). Plasma Blaster, Spread Laser, Burst Cannon, Missile Launcher, and Shotgun have calibrated damage profiles with defined counter-play.'}
+                  </p>
+                </div>
+
+                {/* Pillar 4: Pure Skill Gameplay */}
+                <div className="p-4 rounded-xl bg-slate-950/80 border border-purple-500/40 hover:border-purple-400/70 transition-all shadow-md">
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center text-purple-400">
+                      <ShieldCheck className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-orbitron font-bold text-xs sm:text-sm text-purple-300">
+                        {isRu ? '4. Честный Соревновательный Скилл' : '4. Pure Skill-Based Dogfights'}
+                      </h4>
+                      <span className="text-[10px] font-mono text-purple-400/80">
+                        {isRu ? 'Тайминги, Dash, углы и мобильность' : 'Dash timings, angles & agility'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {isRu
+                      ? 'Всё решают реакция, чтение манёвров врага, тайминг Turbo Dash (окно неуязвимости 180 мс), грамотное использование рикошетов от барьеров и контроль задержки регенерации щита (4.5 сек).'
+                      : 'Combat outcome is decided by anticipation, lead-angle predictions, Turbo Dash invulnerability windows (180 ms), barrier ricochet trick shots, and managing the 4.5s out-of-combat shield recharge cooldown.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Full Changelog Checklist */}
+              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2.5">
+                <h4 className="font-orbitron font-bold text-xs uppercase text-cyan-400 tracking-wider flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-cyan-400" />
+                  {isRu ? 'Полный список изменений Beta 0.8:' : 'Beta 0.8 Complete Changelog:'}
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-300 font-sans">
+                  <div className="flex items-start gap-2">
+                    <span className="text-pink-400 font-bold">✓</span>
+                    <span>{isRu ? 'Удалены модификаторы Homing, Piercing и Rapid Fire' : 'Purged Homing, Piercing & Rapid Fire modifiers'}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-teal-400 font-bold">✓</span>
+                    <span>{isRu ? '5 уникальных арен с препятствиями и цветовой гаммой' : '5 unique arenas with tactile obstacles & themes'}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-cyan-400 font-bold">✓</span>
+                    <span>{isRu ? 'Нерф и ребаланс Railgun (52 ед. урона, стоп о стены)' : 'Railgun balanced to 52 precision dmg, blocked by walls'}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-purple-400 font-bold">✓</span>
+                    <span>{isRu ? 'Разрушаемые взрывные ядра (Explosive Cores) на аренах' : 'Destructible tactical Explosive Cores on arenas'}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 font-bold">✓</span>
+                    <span>{isRu ? 'Кинетические бамперы (Kinetic Bumpers) с отскоком' : 'Kinetic Bumpers for physics-based deflections'}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-emerald-400 font-bold">✓</span>
+                    <span>{isRu ? 'Кнопка «Начать» перенесена на карточку хоста в лобби' : 'Start button positioned on host card next to Ready'}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-rose-400 font-bold">✓</span>
+                    <span>{isRu ? 'Серверная защита от устаревших пакетов и сохранений' : 'Server-side sanitizer against legacy client packets'}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-400 font-bold">✓</span>
+                    <span>{isRu ? 'Выбор арены в лобби с описанием и параметрами' : 'Rich map selector in lobby showing dimensions & traits'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: ARENAS 0.8 */}
+          {activeTab === 'arenas_08' && (
+            <div className="space-y-4">
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-teal-950/60 to-cyan-950/60 border border-teal-500/40">
+                <div className="flex items-center gap-2 mb-1">
+                  <MapIcon className="w-5 h-5 text-teal-400" />
+                  <h3 className="font-orbitron font-bold text-sm sm:text-base text-teal-300">
+                    {isRu ? 'АРЕНЫ CYBERARENA: ПОЛНЫЙ ОБЗОР БИОМОВ' : 'CYBERARENA EVOLUTION: ARENA SHOWCASE'}
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-300">
+                  {isRu
+                    ? 'Каждая карта имеет индивидуальные габариты, физические препятствия, разрушаемые ядра и зоны для фланговых манёвров.'
+                    : 'Every map features bespoke dimensions, kinetic obstacles, destructible cores, and flanking corridors.'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {/* 1. Nebula Arena */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-purple-500/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-orbitron font-bold text-xs sm:text-sm text-purple-300 flex items-center gap-1.5">
+                      <span>🌌</span>
+                      {isRu ? 'Nebula Arena (Туманность)' : 'Nebula Arena'}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-700">
+                      2600x1700 • PURPLE
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    {isRu
+                      ? 'Яркие межзвёздные облака с изогнутыми сплавными барьерами, кинетическими буферами и центральным плазменным ядром. Два симметричных крыла создают идеальные условия для манёвренной охоты в стиле «кошки-мышки».'
+                      : 'Vibrant interstellar gas clouds with luminous alloy barriers and central plasma core. Dual curved flanking lanes create dynamic dogfights.'}
+                  </p>
+                  <div className="text-[11px] font-mono text-purple-400/90 bg-purple-950/40 p-2 rounded-lg border border-purple-800/50">
+                    {isRu ? 'Тактика: Используйте бамперы для резкой смены вектора движения и фланговые коридоры.' : 'Tactics: Leverage dust bumpers for sudden trajectory shifts and flanking routes.'}
+                  </div>
+                </div>
+
+                {/* 2. Asteroid Field */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-amber-500/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-orbitron font-bold text-xs sm:text-sm text-amber-300 flex items-center gap-1.5">
+                      <span>☄️</span>
+                      {isRu ? 'Asteroid Field (Поле Астероидов)' : 'Asteroid Field'}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700">
+                      2500x1700 • AMBER
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    {isRu
+                      ? 'Плотный пояс древних астероидов, геодные кластеры и кинетические отталкивающие буферы. Извилистые проходы среди каменных гряд благоволят засадам и рикошетам.'
+                      : 'Dense belt of ancient space rocks, geode clusters, and kinetic bumpers. Winding rock passages favor tactical ambushes and ricochets.'}
+                  </p>
+                  <div className="text-[11px] font-mono text-amber-400/90 bg-amber-950/40 p-2 rounded-lg border border-amber-800/50">
+                    {isRu ? 'Тактика: Разрушайте минеральные геоды стрельбой, чтобы подорвать прячущегося врага.' : 'Tactics: Detonate mineral geodes to splash enemies taking cover.'}
+                  </div>
+                </div>
+
+                {/* 3. Orbital Station */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-cyan-500/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-orbitron font-bold text-xs sm:text-sm text-cyan-300 flex items-center gap-1.5">
+                      <span>🛰️</span>
+                      {isRu ? 'Orbital Station (Орбитальная Станция)' : 'Orbital Station'}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-700">
+                      2600x1650 • CYAN
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    {isRu
+                      ? 'Бронированная орбитальная платформа с геометрическими коридорами и укреплёнными энергопереборками. Трёхполосная планировка и узкие шлюзы вознаграждают чёткий контроль позиций в соревновательном режиме.'
+                      : 'Armored orbital platform with geometric corridors and fortified energy bulkheads. 3-lane symmetrical layout and airlock choke-points reward sharp positioning.'}
+                  </p>
+                  <div className="text-[11px] font-mono text-cyan-400/90 bg-cyan-950/40 p-2 rounded-lg border border-cyan-800/50">
+                    {isRu ? 'Тактика: Контролируйте узкие вертикальные шлюзы с помощью оружия с рассеиванием или мин.' : 'Tactics: Lockdown vertical airlocks with Spread Laser or Mine Launcher.'}
+                  </div>
+                </div>
+
+                {/* 4. Crystal Expanse */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-emerald-500/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-orbitron font-bold text-xs sm:text-sm text-emerald-300 flex items-center gap-1.5">
+                      <span>💎</span>
+                      {isRu ? 'Crystal Expanse (Кристальная Пустошь)' : 'Crystal Expanse'}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700">
+                      2500x1700 • EMERALD
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    {isRu
+                      ? 'Инопланетный сектор с кристаллическими обелисками, преломляющими призмами и парными квантовыми червоточинами! Порталы связывают западное и восточное крыло для мгновенного телепорта во фланг.'
+                      : 'Alien quadrant with crystalline monoliths, refracting prisms, and linked quantum wormhole portals connecting east and west wings for instant repositioning.'}
+                  </p>
+                  <div className="text-[11px] font-mono text-emerald-400/90 bg-emerald-950/40 p-2 rounded-lg border border-emerald-800/50">
+                    {isRu ? 'Тактика: Прыгайте в червоточину, чтобы оторваться от преследования или зайти в тыл.' : 'Tactics: Jump into wormholes to disengage or execute surprise flank attacks.'}
+                  </div>
+                </div>
+
+                {/* 5. Void Arena */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-blue-500/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-orbitron font-bold text-xs sm:text-sm text-blue-300 flex items-center gap-1.5">
+                      <span>🌌</span>
+                      {isRu ? 'Void Arena (Арена Пустоты)' : 'Void Arena'}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-700">
+                      2800x1800 • BLUE
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    {isRu
+                      ? 'Глубокий космос с центральной микро-сингулярностью (гравитационной воронкой), четырьмя пилонами и колоссальными открытыми линиями. Гравитация искривляет выстрелы и позволяет совершать орбитальные разгоны!'
+                      : 'Deep space arena featuring a central micro-singularity gravity well, 4 monolithic pillars, and immense evasion lanes. Gravitational pull curves shots and enables slingshot maneuvers.'}
+                  </p>
+                  <div className="text-[11px] font-mono text-blue-400/90 bg-blue-950/40 p-2 rounded-lg border border-blue-800/50">
+                    {isRu ? 'Тактика: Используйте гравитационную воронку для слиншот-ускорения и дальнего снайпинга из Railgun.' : 'Tactics: Leverage gravity well slingshots and long-range Railgun marksmanship.'}
+                  </div>
+                </div>
+
+                {/* 6. Titan Void Sector */}
+                <div className="p-3.5 rounded-xl bg-slate-950/80 border border-violet-500/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-orbitron font-bold text-xs sm:text-sm text-violet-300 flex items-center gap-1.5">
+                      <span>👾</span>
+                      {isRu ? 'Titan Void Sector (Сектор Рейда Босса)' : 'Titan Void Sector'}
+                    </span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-950 text-violet-300 border border-violet-700">
+                      4800x4800 • VIOLET
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    {isRu
+                      ? 'Колоссальная арена 4800x4800 для эпического командного рейда на Древнего Титана. Орбитальные защитные пилоны, генераторы плазмы и буферы гравитации для выживания отряда.'
+                      : 'Colossal 4800x4800 raid zone for the Ancient Titan co-op boss battle. Features orbital shield pylons, plasma generators, and grav-bumpers for squad survivability.'}
+                  </p>
+                  <div className="text-[11px] font-mono text-violet-400/90 bg-violet-950/40 p-2 rounded-lg border border-violet-800/50">
+                    {isRu ? 'Тактика: Прячьтесь за пилонами от фазовых залпов босса и уничтожайте защитных миньонов.' : 'Tactics: Seek cover behind pylons during phase discharges and eliminate mini-NPCs.'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: OVERVIEW 0.7 (ARCHIVE) */}
           {activeTab === 'overview_07' && (
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/50 via-purple-950/40 to-pink-950/40 border border-cyan-500/40 shadow-lg">
@@ -943,13 +1253,13 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
                       {isRu ? 'Missile Launcher (Ракетница)' : 'Missile Launcher'}
                     </span>
                     <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-red-500/10 text-red-300 border border-red-500/30">
-                      SPLASH / HOMING
+                      SPLASH / KINETIC
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-300 mb-1.5">
                     {isRu
-                      ? 'Тяжелые ракеты с радиусом взрывного сплеша 60px. Идеально против скоплений врагов и босса.'
-                      : 'Heavy explosive missiles with 60px splash radius. Devastating vs clustered enemies & bosses.'}
+                      ? 'Тяжелые баллистические микро-ракеты с радиусом взрывного сплеша 75px и 24 ед. урона.'
+                      : 'Direct ballistic micro-rockets dealing 24 damage with 75px kinetic splash radius.'}
                   </p>
                   <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1">
                     <span>{isRu ? 'Сила: АоЕ урон' : 'Pro: AoE Blast'}</span>
@@ -965,17 +1275,17 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
                       {isRu ? 'Railgun (Рельсотрон)' : 'Railgun'}
                     </span>
                     <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-300 border border-purple-400/40">
-                      SNIPER / PIERCE
+                      SNIPER / PRECISION
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-300 mb-1.5">
                     {isRu
-                      ? 'Сверхдальний гиперзвуковой луч. Прошивает корабли насквозь и мгновенно сносит энергощиты.'
-                      : 'Ultra long-range hypersonic beam. Pierces multiple vessels and shreds energy shields.'}
+                      ? 'Высокоточный кинетический снаряд со скоростью 1350 px/s и 52 ед. урона. Полностью останавливается о стены!'
+                      : 'High-velocity precision kinetic slug delivering 52 damage at 1350 px/s. Blocked by solid walls!'}
                   </p>
                   <div className="text-[10px] font-mono text-slate-400 flex items-center justify-between border-t border-slate-800/80 pt-1">
-                    <span>{isRu ? 'Сила: Снайперская точность' : 'Pro: Infinite Piercing'}</span>
-                    <span>{isRu ? 'Слабость: Долгая перезарядка' : 'Con: Long cooldown'}</span>
+                    <span>{isRu ? 'Сила: 52 снайперского урона' : 'Pro: 52 Sniper Damage'}</span>
+                    <span>{isRu ? 'Слабость: Останавливается стенами' : 'Con: Blocked by obstacles'}</span>
                   </div>
                 </div>
               </div>
@@ -988,12 +1298,12 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
               <div className="p-3 rounded-xl bg-slate-950/60 border border-purple-500/30">
                 <div className="text-[11px] font-orbitron font-bold text-purple-300 mb-1 flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-                  <span>{isRu ? '14 МОДИФИКАТОРОВ ОРУЖИЯ' : '14 WEAPON MODIFIERS'}</span>
+                  <span>{isRu ? '11 ТАКТИЧЕСКИХ МОДИФИКАТОРОВ (BETA 0.8)' : '11 TACTICAL WEAPON MODIFIERS (BETA 0.8)'}</span>
                 </div>
                 <p className="text-xs text-slate-400 leading-relaxed">
                   {isRu
-                    ? 'Собирайте уникальные билды оружия, комбинируя элементальные модификаторы с пушками:'
-                    : 'Craft unique custom builds by fusing elemental modifiers onto your selected cannons:'}
+                    ? 'В Beta 0.8 удалены казуальные модули Homing, Piercing и Rapid Fire! Доступно 11 соревновательных модулей:'
+                    : 'Casual modules Homing, Piercing, and Rapid Fire were permanently removed in Beta 0.8! 11 skill-based modules remain:'}
                 </p>
               </div>
 
@@ -1074,7 +1384,7 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
         {/* Footer */}
         <div className="px-4 sm:px-6 py-3 border-t border-slate-800 bg-slate-950/90 flex items-center justify-between">
           <div className="text-[11px] font-mono text-cyan-400">
-            <span>CYBERARENA • BETA 0.7: «ТИТАНЫ КИБЕРПАНКА» (TITANS OF CYBERPUNK)</span>
+            <span>CYBERARENA • BETA 0.8: COMBAT REBALANCE & ARENA EVOLUTION</span>
           </div>
           <button
             onClick={onClose}

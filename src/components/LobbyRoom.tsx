@@ -14,7 +14,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { RoomState, Player, WeaponModifier, WeaponType, GameMode } from '../types/game.ts';
-import { MAPS } from '../data/maps.ts';
+import { MAPS, ARENA_MAPS, PRESET_METADATA, ArenaPresetId } from '../data/maps.ts';
 import { WEAPONS, MODIFIER_METAS } from '../data/weapons.ts';
 import { soundManager } from '../services/audio.ts';
 import { Language, TRANSLATIONS } from '../data/translations.ts';
@@ -503,15 +503,95 @@ export const LobbyRoom: React.FC<LobbyRoomProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center space-x-2 font-orbitron font-bold text-slate-200 text-sm tracking-wider mb-3">
-              <MapIcon className="w-4 h-4 text-cyan-400" />
-              <span>{t.arenaEnv}</span>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2 font-orbitron font-bold text-slate-200 text-sm tracking-wider">
+                <MapIcon className="w-4 h-4 text-cyan-400" />
+                <span>{t.arenaEnv}</span>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950/70 border border-cyan-700/60 text-cyan-300">
+                {lang === 'ru' ? 'Beta 0.8: Arena Evolution' : 'Beta 0.8: Arena Evolution'}
+              </span>
             </div>
 
-            {/* Map options list */}
-            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 mb-3">
-              {Object.values(MAPS).map((m) => {
-                const isSelected = room.mapId === m.id;
+            {/* Active Arena Featured Showcase Card (Visible to ALL players) */}
+            {currentMap && (
+              <div className="mb-3 p-3.5 rounded-xl bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-cyan-950/40 border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)] relative overflow-hidden">
+                <div className="flex items-start justify-between gap-2 mb-1.5">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-orbitron font-black text-sm sm:text-base text-white tracking-wide">
+                        {lang === 'ru' ? (currentMap.nameRu || currentMap.name) : (currentMap.nameEn || currentMap.name)}
+                      </span>
+                      <span className="text-[9px] font-mono font-bold text-cyan-400 px-2 py-0.5 rounded bg-cyan-950 border border-cyan-600 shadow-[0_0_8px_rgba(6,182,212,0.3)]">
+                        {lang === 'ru' ? 'ВЫБРАНА' : 'ACTIVE'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 font-sans mt-0.5 leading-relaxed">
+                      {lang === 'ru' ? (currentMap.descriptionRu || currentMap.description) : (currentMap.descriptionEn || currentMap.description)}
+                    </p>
+                  </div>
+                  <span className={`text-[10px] font-mono font-bold px-2 py-1 rounded border uppercase shrink-0 ${
+                    currentMap.theme === 'purple' ? 'bg-purple-950/80 border-purple-500 text-purple-300' :
+                    currentMap.theme === 'amber' ? 'bg-amber-950/80 border-amber-500 text-amber-300' :
+                    currentMap.theme === 'emerald' ? 'bg-emerald-950/80 border-emerald-500 text-emerald-300' :
+                    currentMap.theme === 'blue' ? 'bg-blue-950/80 border-blue-500 text-blue-300' :
+                    currentMap.theme === 'violet' ? 'bg-fuchsia-950/80 border-fuchsia-500 text-fuchsia-300' :
+                    'bg-cyan-950/80 border-cyan-500 text-cyan-300'
+                  }`}>
+                    {currentMap.theme}
+                  </span>
+                </div>
+
+                {/* Tactical Feature Callout */}
+                <div className="p-2 rounded-lg bg-cyan-950/60 border border-cyan-600/40 my-2">
+                  <div className="text-[10px] font-orbitron font-bold text-cyan-400 uppercase tracking-wider mb-0.5 flex items-center gap-1.5">
+                    <span>⚡</span> {lang === 'ru' ? 'Тактическая особенность арены:' : 'Arena Tactical Feature:'}
+                  </div>
+                  <div className="text-[11px] text-cyan-200 font-sans leading-snug">
+                    {lang === 'ru' ? (currentMap.gameplayFeatureRu || currentMap.gameplayFeature) : (currentMap.gameplayFeatureEn || currentMap.gameplayFeature)}
+                  </div>
+                </div>
+
+                {/* Key Tactics & Metrics */}
+                <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-slate-300 mt-2">
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700">
+                    📐 {currentMap.width}x{currentMap.height} px
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700">
+                    🛡️ {currentMap.obstacles?.length || 0} {lang === 'ru' ? 'укрытий' : 'covers'}
+                  </span>
+                  {(currentMap.openCoverRatio || PRESET_METADATA[currentMap.id as ArenaPresetId]?.openCoverRatio) && (
+                    <span className="px-2 py-0.5 rounded bg-emerald-950/70 border border-emerald-600/60 text-emerald-300 font-bold">
+                      ⚔️ {lang === 'ru'
+                        ? (currentMap.openCoverRatioRu || PRESET_METADATA[currentMap.id as ArenaPresetId]?.openCoverRatioRu || currentMap.openCoverRatio)
+                        : (currentMap.openCoverRatio || PRESET_METADATA[currentMap.id as ArenaPresetId]?.openCoverRatio)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Tactics bullets */}
+                {(currentMap.keyTactics || PRESET_METADATA[currentMap.id as ArenaPresetId]?.keyTactics) && (
+                  <div className="mt-2 pt-2 border-t border-slate-800/80">
+                    <span className="text-[10px] font-orbitron font-bold text-slate-400 uppercase tracking-wider">
+                      {lang === 'ru' ? 'Советы для пилотов:' : 'Tactical Advice:'}
+                    </span>
+                    <ul className="mt-1 space-y-0.5 text-[10px] font-sans text-slate-300 list-disc list-inside">
+                      {(lang === 'ru'
+                        ? (currentMap.keyTacticsRu || PRESET_METADATA[currentMap.id as ArenaPresetId]?.keyTacticsRu || currentMap.keyTactics || [])
+                        : (currentMap.keyTacticsEn || PRESET_METADATA[currentMap.id as ArenaPresetId]?.keyTacticsEn || currentMap.keyTactics || [])
+                      ).map((tac, i) => (
+                        <li key={i} className="leading-snug">{tac}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Map options list (Host chooses, non-hosts can browse and inspect) */}
+            <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1 mb-3">
+              {(room.gameMode === 'boss_raid' ? [MAPS.boss_arena, ...ARENA_MAPS] : ARENA_MAPS).map((m) => {
+                const isSelected = room.mapId === m.id || (MAPS[room.mapId]?.id === m.id);
                 return (
                   <button
                     key={m.id}
@@ -519,22 +599,62 @@ export const LobbyRoom: React.FC<LobbyRoomProps> = ({
                     onClick={() => onChangeMap(m.id)}
                     className={`w-full p-2.5 rounded-xl border text-left transition-all ${
                       isSelected
-                        ? 'bg-cyan-950/50 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                        ? 'bg-cyan-950/60 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.25)]'
                         : 'bg-slate-950/40 border-slate-800 hover:border-slate-700'
-                    } ${isHost ? 'cursor-pointer' : 'cursor-default'}`}
+                    } ${isHost ? 'cursor-pointer hover:bg-slate-900/60' : 'cursor-default'}`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-orbitron font-bold text-xs sm:text-sm text-slate-100">
-                        {m.name}
+                      <span className="font-orbitron font-bold text-xs sm:text-sm text-slate-100 flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${
+                          m.theme === 'purple' ? 'bg-purple-400' :
+                          m.theme === 'amber' ? 'bg-amber-400' :
+                          m.theme === 'emerald' ? 'bg-emerald-400' :
+                          m.theme === 'blue' ? 'bg-blue-400' :
+                          m.theme === 'violet' ? 'bg-fuchsia-400' :
+                          'bg-cyan-400'
+                        }`} />
+                        {lang === 'ru' ? (m.nameRu || m.name) : (m.nameEn || m.name)}
                       </span>
-                      {isSelected && (
-                        <span className="text-[9px] font-mono font-bold text-cyan-400 px-1.5 py-0.5 rounded bg-cyan-900/40 border border-cyan-700">
-                          ACTIVE
+                      {isSelected ? (
+                        <span className="text-[9px] font-mono font-bold text-cyan-400 px-1.5 py-0.5 rounded bg-cyan-900/50 border border-cyan-600">
+                          {lang === 'ru' ? 'ВЫБРАНА' : 'ACTIVE'}
                         </span>
-                      )}
+                      ) : isHost ? (
+                        <span className="text-[9px] font-mono text-slate-400 hover:text-cyan-300">
+                          {lang === 'ru' ? 'Выбрать' : 'Select'}
+                        </span>
+                      ) : null}
                     </div>
-                    <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                      {m.width}x{m.height} px • {m.obstacles.length} obstacles
+                    {(m.description || m.descriptionRu) && (
+                      <p className="text-[11px] text-slate-300 font-sans mt-0.5 leading-snug line-clamp-1">
+                        {lang === 'ru' ? (m.descriptionRu || m.description) : (m.descriptionEn || m.description)}
+                      </p>
+                    )}
+                    {(m.gameplayFeature || m.gameplayFeatureRu) && (
+                      <p className="text-[10px] text-cyan-300/90 font-mono mt-0.5 line-clamp-1">
+                        ⚡ {lang === 'ru' ? (m.gameplayFeatureRu || m.gameplayFeature) : (m.gameplayFeatureEn || m.gameplayFeature)}
+                      </p>
+                    )}
+                    <div className="text-[10px] text-slate-400 font-mono mt-0.5 flex flex-wrap items-center gap-2">
+                      <span>{m.width}x{m.height} px</span>
+                      <span>•</span>
+                      <span>{m.obstacles.length} {lang === 'ru' ? 'препятствий' : 'obstacles'}</span>
+                      {PRESET_METADATA[m.id as ArenaPresetId]?.openCoverRatio && (
+                        <>
+                          <span>•</span>
+                          <span className="text-emerald-400/90">
+                            {lang === 'ru'
+                              ? (PRESET_METADATA[m.id as ArenaPresetId].openCoverRatioRu || PRESET_METADATA[m.id as ArenaPresetId].openCoverRatio)
+                              : PRESET_METADATA[m.id as ArenaPresetId].openCoverRatio}
+                          </span>
+                        </>
+                      )}
+                      {m.theme && (
+                        <>
+                          <span>•</span>
+                          <span className="capitalize text-cyan-400/80">{m.theme}</span>
+                        </>
+                      )}
                     </div>
                   </button>
                 );
@@ -542,7 +662,7 @@ export const LobbyRoom: React.FC<LobbyRoomProps> = ({
             </div>
 
             {!isHost && (
-              <p className="text-[10px] text-slate-500 font-mono">
+              <p className="text-[10px] text-slate-400 font-mono">
                 {t.onlyHostCanChangeMap}
               </p>
             )}

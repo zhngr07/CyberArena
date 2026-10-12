@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>CyberArena: Neon Battle</title>
     <script>
+      window.__vite_plugin_react_preamble_installed__ = true;
+      if (!window.$RefreshReg$) window.$RefreshReg$ = function() {};
+      if (!window.$RefreshSig$) window.$RefreshSig$ = function() { return function(type) { return type; }; };
+    </script>
+    <script>
       // Gracefully ignore Vite HMR WebSocket connection notices in preview environment (HMR is disabled in AI Studio)
       (function() {
         const origConsoleError = console.error;

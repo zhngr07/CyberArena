@@ -20,7 +20,7 @@ import {
   WeaponType,
 } from '../src/types/game.ts';
 import { MAPS } from '../src/data/maps.ts';
-import { DYNAMIC_EVENTS, EVENT_TYPES } from '../src/data/events.ts';
+import { DYNAMIC_EVENTS, EVENT_TYPES, MAP_SPECIFIC_EVENTS } from '../src/data/events.ts';
 import {
   checkModifierCompatibility,
   GAME_CONSTANTS,
@@ -61,9 +61,11 @@ export class GameEngine {
   private eventPhaseEndTime: number = 0;
   private meteorHazards: DynamicEventHazard[] = [];
   private nextMeteorDropTime: number = 0;
+  private nextGeodeBurstTime: number = 0;
 
   // Boss Raid state
   private nextBossAttackTime: number = 0;
+  private nextBossMinionWaveTime: number = 0;
 
   // Callbacks
   private onTickCallback: (tickData: {
@@ -143,7 +145,7 @@ export class GameEngine {
     const now = Date.now();
     this.lastTickTime = now;
     this.nextPowerupSpawn = now + 3500;
-    this.nextEventTime = now + 40000; // First dynamic event after 40s
+    this.nextEventTime = now + 9000; // First map-specific dynamic event after 9s
 
     // Initialize all players at spawn points with Split Shield & Hull
     const spawnPoints = [...this.map.spawnPoints];
@@ -161,8 +163,10 @@ export class GameEngine {
       p.maxShield = GAME_CONSTANTS.MAX_SHIELD;
       p.isDead = false;
       p.invulnerableUntil = now + GAME_CONSTANTS.INVULNERABLE_TIME;
-      p.weapon = 'plasma';
-      p.activeModifiers = [];
+      p.weapon = p.loadoutWeapon || p.weapon || 'plasma';
+      p.activeModifiers = ((p.loadoutModifiers || p.activeModifiers || []).filter(
+        (m: string) => m !== 'homing' && m !== 'piercing' && m !== 'rapid_fire'
+      )) as WeaponModifier[];
       p.dashCooldown = 0;
       p.killStreak = 0;
       p.killStreakTier = 'none';
@@ -176,14 +180,13 @@ export class GameEngine {
     if (this.room.gameMode === 'boss_raid') {
       this.room.matchTimeRemaining = 360;
       this.room.matchDuration = 360;
-      // Base stats: 38,000 HP and 9,000 Shield for solo pilot
-      // Dynamic co-op difficulty scaling: +15,000 HP and +6,000 Shield per each additional player/bot
+      // Rebalanced Beta 0.8 Boss Raid: Base 1,000 HP and 300 Shield for solo, +350 HP / +100 Shield per extra player
       const playerCount = Math.max(1, Object.keys(this.room.players).length);
-      const bossHp = 38000 + (playerCount - 1) * 15000;
-      const bossShield = 9000 + (playerCount - 1) * 6000;
+      const bossHp = 1000 + (playerCount - 1) * 350;
+      const bossShield = 300 + (playerCount - 1) * 100;
       this.room.boss = {
         id: 'boss_omega',
-        name: 'ТИТАН ПУСТОТЫ • ОМЕГА [BETA 0.7]',
+        name: 'ТИТАН ПУСТОТЫ • ОМЕГА [BETA 0.8]',
         x: this.map.width / 2,
         y: this.map.height / 2,
         vx: 0,
@@ -201,7 +204,11 @@ export class GameEngine {
         minions: [],
       };
       this.nextBossAttackTime = now + 2000;
+      this.nextBossMinionWaveTime = now + 5000;
     }
+
+    // Immediate initial keyframe tick broadcast so all clients have starting weapon on frame 0
+    this.tick();
 
     this.tickTimer = setInterval(() => {
       this.tick();
@@ -314,7 +321,6 @@ export class GameEngine {
         } : {}),
         ...(p.quadDamageRemaining && p.quadDamageRemaining > 0 ? { quadDamageRemaining: p.quadDamageRemaining } : {}),
         ...(p.stealthRemaining && p.stealthRemaining > 0 ? { stealthRemaining: p.stealthRemaining } : {}),
-        ...(p.homingRemaining && p.homingRemaining > 0 ? { homingRemaining: p.homingRemaining } : {}),
         ...(p.empRemaining && p.empRemaining > 0 ? { empRemaining: p.empRemaining } : {}),
         ...(p.freezeRemaining && p.freezeRemaining > 0 ? { freezeRemaining: p.freezeRemaining } : {}),
         ...(p.burnRemaining && p.burnRemaining > 0 ? { burnRemaining: p.burnRemaining } : {}),
@@ -337,8 +343,6 @@ export class GameEngine {
         weaponType: b.weaponType,
       };
       if (b.modifiers && b.modifiers.length > 0) pObj.modifiers = b.modifiers;
-      if (b.piercing) pObj.piercing = true;
-      if (b.homing) pObj.homing = true;
       if (b.isMine) pObj.isMine = true;
       if (b.isBeam) {
         pObj.isBeam = true;
@@ -367,15 +371,20 @@ export class GameEngine {
   private updateDynamicEvents(now: number, dt: number) {
     if (!this.currentEventState) {
       if (now >= this.nextEventTime) {
-        // Trigger a new random event
-        const randType = EVENT_TYPES[Math.floor(Math.random() * EVENT_TYPES.length)];
-        const def = DYNAMIC_EVENTS[randType];
+        // Trigger a new map-specific event according to arena description
+        const mapEvents = this.map.events || MAP_SPECIFIC_EVENTS[this.map.id] || EVENT_TYPES;
+        const randType = mapEvents[Math.floor(Math.random() * mapEvents.length)];
+        const def = DYNAMIC_EVENTS[randType] || DYNAMIC_EVENTS.METEOR_SHOWER;
 
         this.currentEventState = {
           type: randType,
           phase: 'warning',
           name: def.name,
+          nameRu: def.nameRu,
+          nameEn: def.name,
           description: def.description,
+          descriptionRu: def.descriptionRu,
+          descriptionEn: def.description,
           warningSecondsLeft: def.warningDuration,
           activeSecondsLeft: def.activeDuration,
           hazards: [],
@@ -397,14 +406,19 @@ export class GameEngine {
 
       if (now >= this.eventPhaseEndTime) {
         // Transition to active
-        const def = DYNAMIC_EVENTS[this.currentEventState.type];
+        const def = DYNAMIC_EVENTS[this.currentEventState.type] || DYNAMIC_EVENTS.METEOR_SHOWER;
         this.currentEventState.phase = 'active';
         this.currentEventState.warningSecondsLeft = 0;
         this.eventPhaseEndTime = now + def.activeDuration * 1000;
 
-        if (this.currentEventState.type === 'METEOR_SHOWER') {
+        if (this.currentEventState.type === 'METEOR_SHOWER' || this.currentEventState.type === 'ORBITAL_BOMBARDMENT') {
           this.spawnMeteorHazards();
           this.nextMeteorDropTime = now + 1200;
+        } else if (this.currentEventState.type === 'GEODE_BURST') {
+          this.triggerGeodeBurst(now);
+          this.nextGeodeBurstTime = now + 3000;
+        } else if (this.currentEventState.type === 'WORMHOLE_SURGE') {
+          this.updateWormholeSurgeHazards(now);
         }
       }
     } else if (this.currentEventState.phase === 'active') {
@@ -412,13 +426,77 @@ export class GameEngine {
       this.currentEventState.activeSecondsLeft = remaining;
 
       // Event-specific live mechanics
-      if (this.currentEventState.type === 'METEOR_SHOWER') {
+      const evtType = this.currentEventState.type;
+
+      if (evtType === 'METEOR_SHOWER' || evtType === 'ORBITAL_BOMBARDMENT') {
         if (now >= this.nextMeteorDropTime) {
           this.detonateMeteors(now);
           this.spawnMeteorHazards();
           this.nextMeteorDropTime = now + 1600;
         }
-      } else if (this.currentEventState.type === 'GRAVITY_STORM') {
+      } else if (evtType === 'NEBULA_PLASMA_SURGE') {
+        // Plasma surge accelerates all ships and supercharges dash recovery
+        for (const p of Object.values(this.room.players)) {
+          if (!p.isDead) {
+            if (p.dashCooldown > 0) {
+              p.dashCooldown = Math.max(0, p.dashCooldown - dt * 900);
+            }
+            p.vx *= 1.05;
+            p.vy *= 1.05;
+          }
+        }
+      } else if (evtType === 'ION_CLOUD_STEALTH') {
+        // Fast dash recharge and gentle shield recovery in dense ion gas
+        for (const p of Object.values(this.room.players)) {
+          if (!p.isDead) {
+            p.dashCooldown = Math.max(0, p.dashCooldown - dt * 1200);
+            if (p.shield < p.maxShield) {
+              p.shield = Math.min(p.maxShield, p.shield + 10 * dt);
+            }
+          }
+        }
+      } else if (evtType === 'AIRLOCK_DEPRESSURIZATION') {
+        // Vacuum wind pulling ships toward outer corridors
+        const pullDir = (now % 6000 < 3000 ? 1 : -1);
+        for (const p of Object.values(this.room.players)) {
+          if (!p.isDead) {
+            p.vx += pullDir * 130 * dt;
+          }
+        }
+      } else if (evtType === 'CRYSTALLINE_REGENERATION') {
+        // Proximity healing near crystal barriers
+        for (const obs of this.room.obstacles) {
+          if (obs.type === 'barrier') {
+            const ocx = obs.x + obs.width / 2;
+            const ocy = obs.y + obs.height / 2;
+            for (const p of Object.values(this.room.players)) {
+              if (p.isDead) continue;
+              if (Math.hypot(ocx - p.x, ocy - p.y) < 170) {
+                p.health = Math.min(p.maxHealth, p.health + 15 * dt);
+                p.shield = Math.min(p.maxShield, p.shield + 20 * dt);
+              }
+            }
+          }
+        }
+      } else if (evtType === 'STATION_SECURITY_GRID') {
+        this.updateSecurityGridHazards(now, dt);
+      } else if (evtType === 'ANTIMATTER_PULSE') {
+        this.updateAntimatterPulseHazards(now, dt);
+      } else if (evtType === 'WORMHOLE_SURGE') {
+        this.updateWormholeSurgeHazards(now);
+      } else if (evtType === 'GEODE_BURST') {
+        if (now >= this.nextGeodeBurstTime) {
+          this.triggerGeodeBurst(now);
+          this.nextGeodeBurstTime = now + 3200;
+        }
+      } else if (evtType === 'DARK_MATTER_PULSE') {
+        // EMP pulse de-energizing shields
+        for (const p of Object.values(this.room.players)) {
+          p.shield = Math.max(0, p.shield - 25 * dt);
+          p.vx *= 0.95;
+          p.vy *= 0.95;
+        }
+      } else if (evtType === 'GRAVITY_STORM') {
         // Gravitational turbulent pulse
         const waveAngle = (now / 1000) * 1.5;
         for (const p of Object.values(this.room.players)) {
@@ -434,7 +512,85 @@ export class GameEngine {
         this.currentEventState = null;
         this.room.currentEvent = null;
         this.meteorHazards = [];
-        this.nextEventTime = now + (45000 + Math.random() * 30000); // Next event in 45-75s
+        this.nextEventTime = now + (20000 + Math.random() * 12000); // Next event in 20-32s
+      }
+    }
+  }
+
+  private updateSecurityGridHazards(now: number, dt: number) {
+    const sweep = ((now / 12) % this.map.height);
+    const sweep2 = ((now / 15 + this.map.height / 2) % this.map.height);
+    const hazards: DynamicEventHazard[] = [
+      { x: 80, y: sweep, x2: this.map.width - 80, y2: sweep, radius: 24, progress: 1, hazardType: 'laser_beam' },
+      { x: 80, y: sweep2, x2: this.map.width - 80, y2: sweep2, radius: 24, progress: 1, hazardType: 'laser_beam' },
+    ];
+    this.currentEventState!.hazards = hazards;
+
+    for (const p of Object.values(this.room.players)) {
+      if (p.isDead || p.isDashing || now < p.invulnerableUntil) continue;
+      if (Math.abs(p.y - sweep) < 26 || Math.abs(p.y - sweep2) < 26) {
+        this.applyDamageToPlayer(p, 35 * dt, 'environment', 'laser_beam', now, true);
+      }
+    }
+  }
+
+  private updateAntimatterPulseHazards(now: number, dt: number) {
+    const pulseCycle = (now % 3000) / 3000;
+    const maxRadius = Math.min(this.map.width, this.map.height) * 0.55;
+    const currentRadius = pulseCycle * maxRadius;
+    const cx = this.map.width / 2;
+    const cy = this.map.height / 2;
+
+    this.currentEventState!.hazards = [
+      { x: cx, y: cy, radius: currentRadius, progress: pulseCycle, hazardType: 'antimatter_ring' },
+    ];
+
+    for (const p of Object.values(this.room.players)) {
+      if (p.isDead || p.isDashing || now < p.invulnerableUntil) continue;
+      const d = Math.hypot(p.x - cx, p.y - cy);
+      if (Math.abs(d - currentRadius) < 36) {
+        const angle = Math.atan2(p.y - cy, p.x - cx);
+        p.vx += Math.cos(angle) * 320;
+        p.vy += Math.sin(angle) * 320;
+        this.applyDamageToPlayer(p, 25 * dt, 'environment', 'plasma', now, true);
+      }
+    }
+  }
+
+  private updateWormholeSurgeHazards(now: number) {
+    if (!this.currentEventState!.hazards || this.currentEventState!.hazards.length === 0) {
+      this.currentEventState!.hazards = [
+        { x: this.map.width * 0.28, y: this.map.height * 0.28, radius: 65, progress: 1, hazardType: 'rift' },
+        { x: this.map.width * 0.72, y: this.map.height * 0.72, radius: 65, progress: 1, hazardType: 'rift' },
+      ];
+    }
+    const h1 = this.currentEventState!.hazards[0];
+    const h2 = this.currentEventState!.hazards[1];
+    if (h1 && h2) {
+      for (const p of Object.values(this.room.players)) {
+        if (p.isDead) continue;
+        const cd = this.portalCooldowns.get(p.id) || 0;
+        if (now < cd) continue;
+        if (Math.hypot(p.x - h1.x, p.y - h1.y) < h1.radius) {
+          p.x = h2.x;
+          p.y = h2.y;
+          this.portalCooldowns.set(p.id, now + 700);
+        } else if (Math.hypot(p.x - h2.x, p.y - h2.y) < h2.radius) {
+          p.x = h1.x;
+          p.y = h1.y;
+          this.portalCooldowns.set(p.id, now + 700);
+        }
+      }
+    }
+  }
+
+  private triggerGeodeBurst(now: number) {
+    const cores = this.room.obstacles.filter((o) => o.type === 'explosive_core');
+    if (cores.length > 0) {
+      const target = cores[Math.floor(Math.random() * cores.length)];
+      this.detonateExplosion(target.x + target.width / 2, target.y + target.height / 2, 200, 55, 'environment', 'plasma', now);
+      if (this.room.powerUps.length < 7) {
+        this.spawnRandomPowerUp(now);
       }
     }
   }
@@ -448,6 +604,7 @@ export class GameEngine {
         y: 200 + Math.random() * (this.map.height - 400),
         radius: 95,
         progress: 0,
+        hazardType: 'meteor',
       });
     }
     if (this.currentEventState) {
@@ -475,6 +632,9 @@ export class GameEngine {
     for (const obs of this.room.obstacles) {
       // 1. Gravity Well Physics
       if (obs.type === 'gravity_well' && obs.pullRadius && obs.pullForce) {
+        const isSingularityCollapse = this.currentEventState?.type === 'SINGULARITY_COLLAPSE' && this.currentEventState.phase === 'active';
+        const pullRadius = obs.pullRadius * (isSingularityCollapse ? 1.45 : 1.0);
+        const pullForce = obs.pullForce * (isSingularityCollapse ? 2.6 : 1.0);
         const cx = obs.x + obs.width / 2;
         const cy = obs.y + obs.height / 2;
 
@@ -482,8 +642,8 @@ export class GameEngine {
         for (const p of Object.values(this.room.players)) {
           if (p.isDead) continue;
           const dist = Math.hypot(cx - p.x, cy - p.y);
-          if (dist < obs.pullRadius && dist > 15) {
-            const pull = obs.pullForce * (1 - dist / obs.pullRadius);
+          if (dist < pullRadius && dist > 15) {
+            const pull = pullForce * (1 - dist / pullRadius);
             const dirX = (cx - p.x) / dist;
             const dirY = (cy - p.y) / dist;
             p.vx += dirX * pull * dt;
@@ -494,8 +654,8 @@ export class GameEngine {
         // Pull bullets
         for (const b of this.room.projectiles) {
           const dist = Math.hypot(cx - b.x, cy - b.y);
-          if (dist < obs.pullRadius && dist > 20) {
-            const pull = obs.pullForce * 0.85 * (1 - dist / obs.pullRadius);
+          if (dist < pullRadius && dist > 20) {
+            const pull = pullForce * 0.85 * (1 - dist / pullRadius);
             const dirX = (cx - b.x) / dist;
             const dirY = (cy - b.y) / dist;
             b.vx += dirX * pull * dt;
@@ -517,7 +677,8 @@ export class GameEngine {
         // Teleport Players
         for (const p of Object.values(this.room.players)) {
           if (p.isDead) continue;
-          const cd = this.portalCooldowns.get(p.id) || 0;
+          const isWormholeSurge = this.currentEventState?.type === 'WORMHOLE_SURGE' && this.currentEventState.phase === 'active';
+          const cd = isWormholeSurge ? 0 : (this.portalCooldowns.get(p.id) || 0);
           if (now < cd) continue;
 
           const dist = Math.hypot(srcX - p.x, srcY - p.y);
@@ -525,7 +686,7 @@ export class GameEngine {
             // Wormhole Jump!
             p.x = dstX;
             p.y = dstY;
-            this.portalCooldowns.set(p.id, now + 1400); // 1.4s portal cooldown
+            this.portalCooldowns.set(p.id, isWormholeSurge ? now + 250 : now + 1400); // Instant during surge
           }
         }
       }
@@ -658,10 +819,6 @@ export class GameEngine {
         p.stealthRemaining -= dt;
         if (p.stealthRemaining <= 0) p.stealthRemaining = 0;
       }
-      if (p.homingRemaining && p.homingRemaining > 0) {
-        p.homingRemaining -= dt;
-        if (p.homingRemaining <= 0) p.homingRemaining = 0;
-      }
       if (p.empRemaining && p.empRemaining > 0) {
         p.empRemaining -= dt;
         if (p.empRemaining <= 0) p.empRemaining = 0;
@@ -789,8 +946,10 @@ export class GameEngine {
           }
 
           if (obs.type === 'bumper') {
-            p.vx = -p.vx * 1.5;
-            p.vy = -p.vy * 1.5;
+            const isKinetic = this.currentEventState?.type === 'KINETIC_RESONANCE' && this.currentEventState.phase === 'active';
+            const bounceFactor = isKinetic ? 2.5 : 1.5;
+            p.vx = -p.vx * bounceFactor;
+            p.vy = -p.vy * bounceFactor;
           }
         }
       }
@@ -824,12 +983,11 @@ export class GameEngine {
 
   // --- WEAPON FIRING & CHARGING ---
   private tryFireWeapon(player: Player, now: number, isEnergyOverload: boolean = false) {
-    const config = WEAPONS[player.weapon];
+    const config = WEAPONS[player.weapon] || WEAPONS['plasma'];
     const lastFire = this.lastFireTimes.get(player.id) || 0;
 
     let effectiveFireRate = config.fireRate;
-    if (player.activeModifiers.includes('rapid_fire')) effectiveFireRate *= 0.65;
-    if (player.activeModifiers.includes('overcharge')) effectiveFireRate *= 1.35;
+    if (player.activeModifiers.includes('overcharge')) effectiveFireRate *= 1.25;
     if (isEnergyOverload) effectiveFireRate *= 0.55;
 
     if (now - lastFire < effectiveFireRate) return;
@@ -849,7 +1007,7 @@ export class GameEngine {
         } else {
           clearInterval(interval);
         }
-      }, config.burstDelay || 80);
+      }, config.burstDelay || 85);
       return;
     }
 
@@ -866,7 +1024,7 @@ export class GameEngine {
     totalCount: number,
     angleOffset: number = 0
   ) {
-    const config = WEAPONS[player.weapon];
+    const config = WEAPONS[player.weapon] || WEAPONS['plasma'];
     const baseAngle = player.angle + angleOffset;
     let shotAngle = baseAngle;
 
@@ -884,27 +1042,14 @@ export class GameEngine {
     let speed = config.speed;
     let damage = config.damage;
     let radius = config.radius;
-    let piercing = Boolean(config.piercing || player.activeModifiers.includes('piercing'));
-    let hasHoming = Boolean((player.homingRemaining && player.homingRemaining > 0) || player.activeModifiers.includes('homing'));
-
-    // RAILGUN NERF & DIMINISHING HOMING INTEGRATION
-    let homingStrength = 1.0;
-    if (player.weapon === 'railgun' && hasHoming) {
-      homingStrength = 0.22; // 78% reduction in steering torque!
-      speed *= 0.8; // 20% speed nerf when using homing on railgun
-      damage *= 0.85; // 15% damage reduction
-    }
 
     if (player.activeModifiers.includes('overcharge')) {
-      damage *= 1.4;
-      radius += 2;
-    }
-    if (player.activeModifiers.includes('rapid_fire')) {
-      damage *= 0.85;
+      damage *= 1.25;
+      radius += 1.5;
     }
     if (player.quadDamageRemaining && player.quadDamageRemaining > 0) {
-      damage *= 2.2;
-      radius += 3;
+      damage *= 2.0;
+      radius += 2.5;
     }
 
     const bullet: Bullet = {
@@ -920,13 +1065,10 @@ export class GameEngine {
       radius,
       weaponType: config.type,
       modifiers: [...player.activeModifiers],
-      piercing,
-      homing: hasHoming,
-      homingStrength,
       bouncesLeft: player.weapon === 'ricochet_cannon' || player.activeModifiers.includes('ricochet') ? 3 : 0,
       isMine: config.isMine,
       armed: false,
-      explosionRadius: config.explosionRadius || (player.activeModifiers.includes('explosive') ? 75 : undefined),
+      explosionRadius: config.explosionRadius || (player.activeModifiers.includes('explosive') ? 70 : undefined),
       isBeam: config.isBeam,
       createdAt: now,
       expiresAt: now + (config.isMine ? 18000 : 2500),
@@ -942,8 +1084,8 @@ export class GameEngine {
     const bx = player.x + Math.cos(baseAngle) * spawnOffset;
     const by = player.y + Math.sin(baseAngle) * spawnOffset;
 
-    const scaledDamage = Math.round(config.damage + chargeLevel * 55); // Up to 85 damage!
-    const scaledRadius = Math.round(config.radius + chargeLevel * 8);
+    const scaledDamage = Math.round(config.damage + chargeLevel * 24); // Up to 42 damage
+    const scaledRadius = Math.round(config.radius + chargeLevel * 6);
 
     const bullet: Bullet = {
       id: `b_charge_${player.id}_${now}`,
@@ -958,8 +1100,6 @@ export class GameEngine {
       radius: scaledRadius,
       weaponType: 'charge_beam',
       modifiers: [...player.activeModifiers],
-      piercing: true,
-      homing: false,
       chargeLevel,
       createdAt: now,
       expiresAt: now + 2000,
@@ -996,38 +1136,6 @@ export class GameEngine {
             }
           }
           if (detonated) continue;
-        }
-      }
-
-      // 2. Homing Guidance
-      if (b.homing) {
-        let closestDist = Infinity;
-        let targetX = 0;
-        let targetY = 0;
-
-        for (const p of Object.values(this.room.players)) {
-          if (p.id === b.ownerId || p.isDead || (p.stealthRemaining && p.stealthRemaining > 0)) continue;
-          const d = Math.hypot(p.x - b.x, p.y - b.y);
-          if (d < closestDist && d < 650) {
-            closestDist = d;
-            targetX = p.x;
-            targetY = p.y;
-          }
-        }
-
-        if (closestDist < Infinity) {
-          const desiredAngle = Math.atan2(targetY - b.y, targetX - b.x);
-          const currentAngle = Math.atan2(b.vy, b.vx);
-          let angleDiff = desiredAngle - currentAngle;
-          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-
-          // Homing turn torque (clamped severely for Railgun via homingStrength)
-          const baseTurnSpeed = 4.8 * (b.homingStrength || 1.0) * dt;
-          const newAngle = currentAngle + Math.max(-baseTurnSpeed, Math.min(baseTurnSpeed, angleDiff));
-          const speed = Math.hypot(b.vx, b.vy);
-          b.vx = Math.cos(newAngle) * speed;
-          b.vy = Math.sin(newAngle) * speed;
         }
       }
 
@@ -1069,6 +1177,9 @@ export class GameEngine {
             b.bouncesLeft--;
             b.vx = -b.vx;
             b.vy = -b.vy;
+            if (this.currentEventState?.type === 'KINETIC_RESONANCE' && this.currentEventState.phase === 'active') {
+              b.damage = Math.round(b.damage * 1.5); // +50% ricochet damage during resonance
+            }
             hitObstacle = false; // Bounced, not absorbed!
             break;
           }
@@ -1076,7 +1187,11 @@ export class GameEngine {
         }
       }
 
-      if (hitObstacle && !b.piercing) {
+      if (hitObstacle) {
+        // Crystal Prism Burst event: bullets hitting barriers shatter into prismatic shards
+        if (this.currentEventState?.type === 'CRYSTAL_PRISM_BURST' && this.currentEventState.phase === 'active') {
+          this.spawnPrismRefractionShards(b, now);
+        }
         // Trigger split on obstacle if equipped
         if (b.modifiers?.includes('split')) {
           this.spawnSplitFragments(b, now);
@@ -1101,9 +1216,7 @@ export class GameEngine {
           if (b.explosionRadius) {
             this.detonateExplosion(this.room.boss.x, this.room.boss.y, b.explosionRadius, b.damage, b.ownerId, b.weaponType, now);
           }
-          if (!b.piercing) {
-            continue;
-          }
+          continue;
         }
 
         // Also check collision against Boss mini-NPC minions
@@ -1126,7 +1239,7 @@ export class GameEngine {
             }
           }
         }
-        if (hitMinion && !b.piercing) {
+        if (hitMinion) {
           continue;
         }
       }
@@ -1172,11 +1285,11 @@ export class GameEngine {
             this.detonateExplosion(p.x, p.y, b.explosionRadius, b.damage * 0.75, b.ownerId, b.weaponType, now);
           }
 
-          if (!b.piercing) break;
+          break;
         }
       }
 
-      if (hitPlayer && !b.piercing) {
+      if (hitPlayer) {
         continue;
       }
 
@@ -1205,10 +1318,31 @@ export class GameEngine {
         damage: Math.round(parentBullet.damage * 0.4),
         radius: 4,
         weaponType: parentBullet.weaponType,
-        piercing: false,
-        homing: false,
         createdAt: now,
         expiresAt: now + 900,
+      });
+    }
+  }
+
+  private spawnPrismRefractionShards(parentBullet: Bullet, now: number) {
+    const count = 3;
+    const baseAngle = Math.atan2(-parentBullet.vy, -parentBullet.vx);
+    for (let i = 0; i < count; i++) {
+      const angle = baseAngle + (i - 1) * 0.65;
+      this.room.projectiles.push({
+        id: `prism_${parentBullet.id}_${i}_${Math.random().toString(36).substring(2, 5)}`,
+        ownerId: parentBullet.ownerId,
+        ownerName: parentBullet.ownerName,
+        color: '#34d399',
+        x: parentBullet.x,
+        y: parentBullet.y,
+        vx: Math.cos(angle) * 720,
+        vy: Math.sin(angle) * 720,
+        damage: Math.round(parentBullet.damage * 0.45),
+        radius: 3.5,
+        weaponType: parentBullet.weaponType,
+        createdAt: now,
+        expiresAt: now + 750,
       });
     }
   }
@@ -1427,7 +1561,9 @@ export class GameEngine {
     player.isDead = false;
     player.invulnerableUntil = now + GAME_CONSTANTS.INVULNERABLE_TIME;
     player.weapon = player.loadoutWeapon || 'plasma';
-    player.activeModifiers = player.loadoutModifiers && player.loadoutModifiers.length > 0 ? [...player.loadoutModifiers] : [];
+    player.activeModifiers = (player.loadoutModifiers && player.loadoutModifiers.length > 0 ? [...player.loadoutModifiers] : []).filter(
+      (m: string) => m !== 'homing' && m !== 'piercing' && m !== 'rapid_fire'
+    ) as WeaponModifier[];
     player.speedMultiplier = 1.0;
     player.empRemaining = 0;
     player.freezeRemaining = 0;
@@ -1491,11 +1627,11 @@ export class GameEngine {
     } else if (rarityRoll < 0.60) {
       // Rare (32% chance)
       rarity = 'rare';
-      pool = ['burst_cannon', 'missile_launcher', 'laser_beam', 'plasma_shotgun', 'ricochet_cannon', 'mod_homing', 'mod_explosive', 'mod_ricochet', 'mod_shield_breaker', 'mod_emp', 'mod_split'];
+      pool = ['burst_cannon', 'missile_launcher', 'laser_beam', 'plasma_shotgun', 'ricochet_cannon', 'mod_explosive', 'mod_ricochet', 'mod_shield_breaker', 'mod_emp', 'mod_split'];
     } else {
       // Common (40% chance)
       rarity = 'common';
-      pool = ['health', 'shield', 'speed', 'spread', 'mod_rapid_fire', 'mod_freeze', 'mod_burn'];
+      pool = ['health', 'shield', 'speed', 'spread', 'mod_freeze', 'mod_burn'];
     }
 
     const type = pool[Math.floor(Math.random() * pool.length)];
@@ -1544,9 +1680,6 @@ export class GameEngine {
       case 'quad_damage':
         player.quadDamageRemaining = 8;
         break;
-      case 'homing_missile':
-        player.homingRemaining = 9;
-        break;
       case 'stealth_cloak':
         player.stealthRemaining = 8;
         break;
@@ -1574,12 +1707,6 @@ export class GameEngine {
         player.weapon = type as WeaponType;
         break;
       // Modifier pickups
-      case 'mod_homing':
-        this.tryAddModifier(player, 'homing');
-        break;
-      case 'mod_piercing':
-        this.tryAddModifier(player, 'piercing');
-        break;
       case 'mod_split':
         this.tryAddModifier(player, 'split');
         break;
@@ -1597,9 +1724,6 @@ export class GameEngine {
         break;
       case 'mod_emp':
         this.tryAddModifier(player, 'emp');
-        break;
-      case 'mod_rapid_fire':
-        this.tryAddModifier(player, 'rapid_fire');
         break;
       case 'mod_overcharge':
         this.tryAddModifier(player, 'overcharge');
@@ -1699,34 +1823,84 @@ export class GameEngine {
     boss.x = Math.max(pad, Math.min(this.map.width - pad, boss.x));
     boss.y = Math.max(pad, Math.min(this.map.height - pad, boss.y));
 
-    // Shield passive regeneration + shield guard active conduit
-    const activeShieldGuards = (boss.minions || []).filter((m) => m.health > 0 && m.type === 'shield_guard').length;
-    const shieldRegenRate = 25 + activeShieldGuards * 60; // Shield guards actively boost Boss shield recharge!
-    if (boss.shield < boss.maxShield) {
-      boss.shield = Math.min(boss.maxShield, boss.shield + shieldRegenRate * dt);
-    }
+    // Zero regeneration: Boss HP and Shield NEVER passively recover (0 regen)
 
     // Process Mini-NPC minions (spawn, movement, attack, kamikaze)
     if (!boss.minions) boss.minions = [];
-    
-    // Spawn mini-NPCs periodically if count < 6
-    if (boss.minions.length < 6 && Math.random() < 0.03) {
-      const minionAngle = Math.random() * Math.PI * 2;
+
+    // Structured wave spawning: max 4 minions, strictly relative to boss position (120-180 distance), obstacle-safe
+    if (boss.minions.length < 4 && now >= this.nextBossMinionWaveTime) {
+      this.nextBossMinionWaveTime = now + 16000; // 16-second wave intervals
       const minionType: 'drone' | 'kamikaze' | 'shield_guard' =
         boss.phase === 3 ? 'kamikaze' : (Math.random() < 0.5 ? 'drone' : 'shield_guard');
-      const minionHp = minionType === 'shield_guard' ? 450 : minionType === 'kamikaze' ? 220 : 320;
-      boss.minions.push({
-        id: `minion_${now}_${Math.random().toString(36).slice(2, 6)}`,
-        x: boss.x + Math.cos(minionAngle) * (boss.radius + 60),
-        y: boss.y + Math.sin(minionAngle) * (boss.radius + 60),
-        vx: 0,
-        vy: 0,
-        angle: minionAngle,
-        health: minionHp,
-        maxHealth: minionHp,
-        radius: minionType === 'shield_guard' ? 22 : 18,
-        type: minionType,
-      });
+      const minionHp = minionType === 'shield_guard' ? 120 : minionType === 'kamikaze' ? 75 : 95;
+      const minionRadius = minionType === 'shield_guard' ? 22 : 18;
+
+      // Search 8 candidate radial directions around the boss (135 units from center)
+      const spawnDist = boss.radius + 35;
+      let spawnFound = false;
+      let chosenX = 0;
+      let chosenY = 0;
+      let chosenAngle = 0;
+      const baseOffset = Math.random() * Math.PI * 2;
+
+      for (let i = 0; i < 8; i++) {
+        const testAngle = baseOffset + (i * Math.PI) / 4;
+        const testX = boss.x + Math.cos(testAngle) * spawnDist;
+        const testY = boss.y + Math.sin(testAngle) * spawnDist;
+
+        // Check map boundaries with padding
+        if (testX < 120 || testX > this.map.width - 120 || testY < 120 || testY > this.map.height - 120) {
+          continue;
+        }
+
+        // Check obstacle collisions
+        let collidesObs = false;
+        for (const obs of this.room.obstacles) {
+          if (obs.type === 'portal' || obs.type === 'gravity_well') continue;
+          if (
+            testX >= obs.x - minionRadius &&
+            testX <= obs.x + obs.width + minionRadius &&
+            testY >= obs.y - minionRadius &&
+            testY <= obs.y + obs.height + minionRadius
+          ) {
+            collidesObs = true;
+            break;
+          }
+        }
+        if (collidesObs) continue;
+
+        // Check collision against other existing minions
+        let collidesOther = false;
+        for (const existing of boss.minions) {
+          if (Math.hypot(testX - existing.x, testY - existing.y) < 35) {
+            collidesOther = true;
+            break;
+          }
+        }
+        if (collidesOther) continue;
+
+        spawnFound = true;
+        chosenX = testX;
+        chosenY = testY;
+        chosenAngle = testAngle;
+        break;
+      }
+
+      if (spawnFound) {
+        boss.minions.push({
+          id: `minion_${now}_${Math.random().toString(36).slice(2, 6)}`,
+          x: chosenX,
+          y: chosenY,
+          vx: 0,
+          vy: 0,
+          angle: chosenAngle,
+          health: minionHp,
+          maxHealth: minionHp,
+          radius: minionRadius,
+          type: minionType,
+        });
+      }
     }
 
     // Update active minions
@@ -1750,14 +1924,14 @@ export class GameEngine {
       if (targetP) {
         const ang = Math.atan2(targetP.y - m.y, targetP.x - m.x);
         m.angle = ang;
-        const spd = m.type === 'kamikaze' ? 160 : m.type === 'shield_guard' ? 80 : 110;
+        const spd = m.type === 'kamikaze' ? 150 : m.type === 'shield_guard' ? 75 : 105;
         m.vx += (Math.cos(ang) * spd - m.vx) * 0.08;
         m.vy += (Math.sin(ang) * spd - m.vy) * 0.08;
 
         // Kamikaze detonation against player
         if (m.type === 'kamikaze' && minionDist <= m.radius + GAME_CONSTANTS.PLAYER_RADIUS + 15) {
-          this.applyDamageToPlayer(targetP, 45, 'boss', 'plasma', now);
-          this.detonateExplosion(m.x, m.y, 90, 40, 'boss', 'plasma', now);
+          this.applyDamageToPlayer(targetP, 20, 'boss', 'plasma', now);
+          this.detonateExplosion(m.x, m.y, 75, 18, 'boss', 'plasma', now);
           m.health = 0; // destroyed
           continue;
         }
@@ -1771,11 +1945,11 @@ export class GameEngine {
             weaponType: 'plasma',
             x: m.x + Math.cos(ang) * (m.radius + 5),
             y: m.y + Math.sin(ang) * (m.radius + 5),
-            vx: Math.cos(ang) * 400,
-            vy: Math.sin(ang) * 400,
-            damage: 18,
+            vx: Math.cos(ang) * 380,
+            vy: Math.sin(ang) * 380,
+            damage: 8,
             color: '#f43f5e',
-            radius: 7,
+            radius: 6,
             createdAt: now,
             expiresAt: now + 2500,
           });
@@ -1804,7 +1978,7 @@ export class GameEngine {
       const count = 16;
       for (let i = 0; i < count; i++) {
         const ang = (i / count) * Math.PI * 2 + (now * 0.002);
-        const speed = 360;
+        const speed = 340;
         this.room.projectiles.push({
           id: `boss_nova_${now}_${i}`,
           ownerId: 'boss',
@@ -1814,21 +1988,20 @@ export class GameEngine {
           y: boss.y + Math.sin(ang) * (boss.radius + 10),
           vx: Math.cos(ang) * speed,
           vy: Math.sin(ang) * speed,
-          damage: 32,
+          damage: 18,
           color: '#f43f5e',
-          radius: 12,
+          radius: 10,
           createdAt: now,
           expiresAt: now + 3500,
         });
       }
       this.nextBossAttackTime = now + 2400;
     } else if (boss.phase === 2) {
-      // PHASE 2: 4 HOMING MISSILES
-      boss.attackName = 'САМОНАВОДЯЩИЕСЯ ТОРПЕДЫ';
+      // PHASE 2: 4 SPREAD TORPEDOES (Direct ballistic flight, no homing)
+      boss.attackName = 'ПЛАЗМЕННЫЕ ТОРПЕДЫ';
       const players = Object.values(this.room.players).filter((p) => !p.isDead);
       for (let i = 0; i < 4; i++) {
-        const targetP = players[i % players.length] || target;
-        const baseAngle = boss.angle + ((i - 1.5) * 0.5);
+        const baseAngle = boss.angle + ((i - 1.5) * 0.45);
         this.room.projectiles.push({
           id: `boss_missile_${now}_${i}`,
           ownerId: 'boss',
@@ -1836,15 +2009,14 @@ export class GameEngine {
           weaponType: 'missile_launcher',
           x: boss.x + Math.cos(baseAngle) * (boss.radius + 15),
           y: boss.y + Math.sin(baseAngle) * (boss.radius + 15),
-          vx: Math.cos(baseAngle) * 290,
-          vy: Math.sin(baseAngle) * 290,
-          damage: 40,
+          vx: Math.cos(baseAngle) * 310,
+          vy: Math.sin(baseAngle) * 310,
+          damage: 22,
           color: '#a855f7',
-          radius: 10,
+          radius: 9,
           createdAt: now,
-          expiresAt: now + 4000,
-          homing: true,
-          explosionRadius: 75,
+          expiresAt: now + 3500,
+          explosionRadius: 65,
         });
       }
       this.nextBossAttackTime = now + 3200;
@@ -1853,7 +2025,7 @@ export class GameEngine {
       boss.attackName = 'ПЛАЗМЕННЫЙ ЗАЛП';
       if (target) {
         const ang = Math.atan2(target.y - boss.y, target.x - boss.x);
-        for (const offset of [-0.25, 0.25]) {
+        for (const offset of [-0.22, 0.22]) {
           const finalAngle = ang + offset;
           this.room.projectiles.push({
             id: `boss_plasma_${now}_${offset}`,
@@ -1862,17 +2034,17 @@ export class GameEngine {
             weaponType: 'plasma',
             x: boss.x + Math.cos(finalAngle) * (boss.radius + 10),
             y: boss.y + Math.sin(finalAngle) * (boss.radius + 10),
-            vx: Math.cos(finalAngle) * 440,
-            vy: Math.sin(finalAngle) * 440,
-            damage: 26,
+            vx: Math.cos(finalAngle) * 420,
+            vy: Math.sin(finalAngle) * 420,
+            damage: 15,
             color: '#ec4899',
-            radius: 9,
+            radius: 8,
             createdAt: now,
             expiresAt: now + 3000,
           });
         }
       }
-      this.nextBossAttackTime = now + 1500;
+      this.nextBossAttackTime = now + 1600;
     }
   }
 
@@ -1934,6 +2106,8 @@ export class GameEngine {
     if (!this.room.boss) return;
     const b = this.room.boss;
     b.health = 0;
+    b.shield = 0;
+    b.minions = [];
 
     let highestDmg = 0;
     let mvpId = this.room.boss.mvpPlayerId || '';

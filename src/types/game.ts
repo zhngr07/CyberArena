@@ -12,12 +12,9 @@ export type WeaponType =
   | 'charge_beam';
 
 export type WeaponModifier =
-  | 'homing'
-  | 'piercing'
   | 'split'
   | 'explosive'
   | 'ricochet'
-  | 'rapid_fire'
   | 'overcharge'
   | 'shield_breaker'
   | 'armor_piercer'
@@ -211,7 +208,6 @@ export interface Player {
   // Buffs
   quadDamageRemaining?: number;
   stealthRemaining?: number;
-  homingRemaining?: number;
   lastProcessedSeq?: number;
 }
 
@@ -228,9 +224,6 @@ export interface Bullet {
   radius: number;
   weaponType: WeaponType;
   modifiers?: WeaponModifier[];
-  piercing?: boolean;
-  homing?: boolean;
-  homingStrength?: number; // Diminished homing factor (e.g. 0.25 on railgun)
   bouncesLeft?: number; // For ricochet
   isMine?: boolean; // For mine launcher
   armed?: boolean; // Mine proximity arm status
@@ -260,18 +253,14 @@ export type PowerUpType =
   | 'charge_beam'
   | 'speed'
   | 'quad_damage'
-  | 'homing_missile'
   | 'stealth_cloak'
   | 'emp_shockwave'
-  | 'mod_homing'
-  | 'mod_piercing'
   | 'mod_split'
   | 'mod_explosive'
   | 'mod_ricochet'
   | 'mod_shield_breaker'
   | 'mod_armor_piercer'
   | 'mod_emp'
-  | 'mod_rapid_fire'
   | 'mod_overcharge'
   | 'mod_freeze'
   | 'mod_burn'
@@ -314,13 +303,25 @@ export interface MapObstacle {
 export interface GameMap {
   id: string;
   name: string;
+  nameRu?: string;
+  nameEn?: string;
   theme: string;
   width: number;
   height: number;
   obstacles: MapObstacle[];
   spawnPoints: Vector2D[];
   description?: string;
+  descriptionRu?: string;
+  descriptionEn?: string;
   gameplayFeature?: string;
+  gameplayFeatureRu?: string;
+  gameplayFeatureEn?: string;
+  openCoverRatio?: string;
+  openCoverRatioRu?: string;
+  keyTactics?: string[];
+  keyTacticsRu?: string[];
+  keyTacticsEn?: string[];
+  events?: DynamicEventType[];
 }
 
 export type DynamicEventType =
@@ -329,20 +330,41 @@ export type DynamicEventType =
   | 'SOLAR_FLARE'
   | 'BLACKOUT'
   | 'WORMHOLE_SURGE'
-  | 'ENERGY_OVERLOAD';
+  | 'ENERGY_OVERLOAD'
+  | 'NEBULA_PLASMA_SURGE'
+  | 'ION_CLOUD_STEALTH'
+  | 'KINETIC_RESONANCE'
+  | 'GEODE_BURST'
+  | 'AIRLOCK_DEPRESSURIZATION'
+  | 'STATION_SECURITY_GRID'
+  | 'CRYSTAL_PRISM_BURST'
+  | 'CRYSTALLINE_REGENERATION'
+  | 'SINGULARITY_COLLAPSE'
+  | 'ANTIMATTER_PULSE'
+  | 'ORBITAL_BOMBARDMENT'
+  | 'DARK_MATTER_PULSE';
 
 export interface DynamicEventHazard {
   x: number;
   y: number;
   radius: number;
   progress: number; // 0 to 1 before strike
+  hazardType?: 'meteor' | 'laser_beam' | 'antimatter_ring' | 'singularity' | 'rift' | 'geode_shard';
+  x2?: number;
+  y2?: number;
+  width?: number;
+  speed?: number;
 }
 
 export interface DynamicEventState {
   type: DynamicEventType;
   phase: 'warning' | 'active';
   name: string;
+  nameRu?: string;
+  nameEn?: string;
   description: string;
+  descriptionRu?: string;
+  descriptionEn?: string;
   warningSecondsLeft: number;
   activeSecondsLeft: number;
   hazards?: DynamicEventHazard[];

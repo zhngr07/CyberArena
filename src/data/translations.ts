@@ -5,7 +5,7 @@ export const TRANSLATIONS = {
     // Header & Meta
     brandTitle: 'CYBER',
     brandSub: 'ARENA',
-    tagline: 'МУЛЬТИПЛЕЕР 2D PvP АРЕНА — BETA 0.7: «ТИТАНЫ КИБЕРПАНКА»',
+    tagline: 'МУЛЬТИПЛЕЕР 2D PvP АРЕНА — BETA 0.8: COMBAT REBALANCE & ARENA EVOLUTION',
     latency: 'ПИНГ',
     sound: 'ЗВУК',
     help: 'КАК ИГРАТЬ С ДРУГОМ?',
@@ -13,10 +13,10 @@ export const TRANSLATIONS = {
     coins: 'МОНЕТЫ',
 
     // Main Menu
-    badgeHero: 'BETA 0.7 — TITANS OF CYBERPUNK',
-    whatsNewBtn: 'ЧТО НОВОГО? • BETA 0.7',
-    whatsNewSub: '25+ Кораблей, Шляпы и Обвесы, Мобильный Режим CyberArena, Усиленный Босс с Мини-НПС!',
-    whatsNewBadge: 'BETA 0.7',
+    badgeHero: 'BETA 0.8 — COMBAT REBALANCE & ARENA EVOLUTION',
+    whatsNewBtn: 'ЧТО НОВОГО? • BETA 0.8',
+    whatsNewSub: 'Удаление казуальных модификаторов, 5 новых тактических арен, ребаланс оружия и честный скилловый бой!',
+    whatsNewBadge: 'BETA 0.8',
     menuHeroDesc: 'Сражайся на арене с друзьями, собирай билды модулей, участвуй в космических событиях и побеждай гигантских боссов!',
     callsignLabel: 'ПОЗЫВНОЙ ВОИНА (НИКНЕЙМ)',
     callsignPlaceholder: 'Введи свой ник...',
@@ -259,7 +259,7 @@ export const TRANSLATIONS = {
     // Header & Meta
     brandTitle: 'CYBER',
     brandSub: 'ARENA',
-    tagline: 'MULTIPLAYER 2D PvP ARENA — BETA 0.7: «TITANS OF CYBERPUNK»',
+    tagline: 'MULTIPLAYER 2D PvP ARENA — BETA 0.8: COMBAT REBALANCE & ARENA EVOLUTION',
     latency: 'PING',
     sound: 'SOUND',
     help: 'HOW TO PLAY WITH A FRIEND?',
@@ -267,10 +267,10 @@ export const TRANSLATIONS = {
     coins: 'COINS',
 
     // Main Menu
-    badgeHero: 'BETA 0.7 — TITANS OF CYBERPUNK',
-    whatsNewBtn: "WHAT'S NEW? • BETA 0.7",
-    whatsNewSub: '25+ Ships, Hats & Accessories, Dedicated Mobile Mode, 6-Min Boss Overhaul & Mini-NPCs!',
-    whatsNewBadge: 'UPDATE 0.7',
+    badgeHero: 'BETA 0.8 — COMBAT REBALANCE & ARENA EVOLUTION',
+    whatsNewBtn: "WHAT'S NEW? • BETA 0.8",
+    whatsNewSub: 'Casual Modifiers Removed, 5 Brand-New Tactical Arenas, Weapon Rebalance & Pure Skill-Based Combat!',
+    whatsNewBadge: 'UPDATE 0.8',
     menuHeroDesc: 'Battle friends in the arena, customize modular builds, survive dynamic space events, and claim bounties!',
     callsignLabel: 'PILOT CALLSIGN',
     callsignPlaceholder: 'Enter callsign...',

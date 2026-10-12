@@ -96,7 +96,7 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
                 {activeTab === 'invite'
                   ? t.guideSubtitle
                   : activeTab === 'weapons'
-                  ? (lang === 'ru' ? 'Все пушки, контрпики и нерф Railgun + Homing' : 'Weapon mechanics & counterpicks')
+                  ? (lang === 'ru' ? 'Все пушки, контрпики и тактический баланс' : 'Weapon mechanics & counterpicks')
                   : (lang === 'ru' ? 'Полный список модулей и синергий игры' : 'Full list of modules & build synergies')}
               </p>
             </div>
@@ -280,16 +280,16 @@ export const HowToPlayModal: React.FC<HowToPlayModalProps> = ({
             </>
           ) : (
             <>
-              {/* Railgun Nerf Notice */}
-              <div className="p-3.5 rounded-xl bg-gradient-to-r from-blue-950/70 to-rose-950/70 border border-rose-500/50 shadow-md">
-                <div className="flex items-center gap-2 text-rose-300 font-orbitron font-bold text-xs mb-1">
-                  <ShieldAlert className="w-4 h-4 text-rose-400" />
-                  <span>{lang === 'ru' ? 'БАЛАНС 0.5: НЕРФ СВЯЗКИ RAILGUN + HOMING' : 'BALANCE 0.5: RAILGUN + HOMING NERF'}</span>
+              {/* Combat Rebalance Notice */}
+              <div className="p-3.5 rounded-xl bg-gradient-to-r from-blue-950/70 to-rose-950/70 border border-cyan-500/50 shadow-md">
+                <div className="flex items-center gap-2 text-cyan-300 font-orbitron font-bold text-xs mb-1">
+                  <ShieldAlert className="w-4 h-4 text-cyan-400" />
+                  <span>{lang === 'ru' ? 'БАЛАНС 0.8: ЧИСТЫЙ СКИЛЛ И ТАКТИЧЕСКИЙ БОЙ' : 'BALANCE 0.8: SKILL-BASED TACTICAL COMBAT'}</span>
                 </div>
                 <p className="text-xs text-slate-300 font-sans leading-relaxed">
                   {lang === 'ru'
-                    ? 'Связка Railgun + Homing больше не является абсолютной имбой! Самонаведение на Railgun имеет эффект Diminishing Returns: поворот снаряда замедлен на 78%, скорость снижена на 20%, а урон уменьшен на 15%. Теперь от выстрела можно легко увернуться с помощью Dash!'
-                    : 'The Railgun + Homing combination is no longer invincible! Homing on Railgun suffers massive diminishing returns: steering turn rate is nerfed by 78%, speed reduced by 20%, and damage decreased by 15%. Target pilots can reliably evade via Turbo Dash!'}
+                    ? 'Модификаторы Homing (самонаводка), Скорострельность и Пробивание сквозь стены полностью удалены из игры! Все выстрелы теперь требуют точного прицеливания и чтения позиций врага. Railgun наносит точечный урон в 52 ед. и надёжно останавливается любыми препятствиями!'
+                    : 'Homing, Fire Rate, and Wall Penetration modifiers have been completely removed! All combat engagements now reward precise aim, prediction, and positioning. Railgun inflicts 52 precision damage and is safely blocked by solid obstacles!'}
                 </p>
               </div>
 

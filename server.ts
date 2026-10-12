@@ -199,6 +199,23 @@ async function setupServer() {
       appType: 'spa',
     });
     app.use(vite.middlewares);
+
+    // In dev mode, handle client-side routing and HTML requests through vite.transformIndexHtml
+    app.use('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      if (url.startsWith('/api') || url.startsWith('/ws')) {
+        return next();
+      }
+      try {
+        const fs = await import('fs');
+        let template = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e: any) {
+        vite.ssrFixStacktrace(e);
+        next(e);
+      }
+    });
   } else {
     // Production mode: serve built static files
     app.use(express.static(path.resolve(__dirname, 'dist')));

@@ -2,6 +2,8 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import {
   BossState,
   Bullet,
+  DynamicEventState,
+  DynamicEventHazard,
   GameMap,
   KillEvent,
   MapObstacle,
@@ -14,11 +16,12 @@ import {
   AccessoryType,
   TrailType,
 } from '../types/game.ts';
-import { MAPS } from '../data/maps.ts';
+import { MAPS, PRESET_METADATA, ArenaPresetId } from '../data/maps.ts';
+import { DYNAMIC_EVENTS, MAP_SPECIFIC_EVENTS } from '../data/events.ts';
 import { GAME_CONSTANTS, WEAPONS, MODIFIER_METAS } from '../data/weapons.ts';
 import { soundManager } from '../services/audio.ts';
 import { networkManager } from '../services/network.ts';
-import { Shield, Zap, Crosshair, Trophy, Activity, Sliders, Radio, ChevronDown, ChevronUp, Settings, LogOut } from 'lucide-react';
+import { Shield, Zap, Crosshair, Trophy, Activity, Sliders, Radio, ChevronDown, ChevronUp, Settings, LogOut, AlertTriangle, Flame } from 'lucide-react';
 import { Language, TRANSLATIONS } from '../data/translations.ts';
 import { NetworkDebugOverlay } from './NetworkDebugOverlay.tsx';
 import { MobileVirtualControls } from './MobileVirtualControls.tsx';
@@ -156,6 +159,28 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   } = useDeviceOrientation();
 
   const [showMobileRadar, setShowMobileRadar] = useState(false);
+  const [showMapIntro, setShowMapIntro] = useState<boolean>(true);
+  const [showMapDetailsModal, setShowMapDetailsModal] = useState<boolean>(false);
+  const [activeEvent, setActiveEvent] = useState<DynamicEventState | null>(null);
+  const currentEventRef = useRef<DynamicEventState | null>(null);
+
+  useEffect(() => {
+    const unsub = networkManager.onEventAlert((evt) => {
+      currentEventRef.current = evt;
+      setActiveEvent(evt);
+      soundManager.playEventAlert();
+    });
+    return () => {
+      unsub();
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowMapIntro(false);
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Mobile settings reference
   const mobileSettingsRef = useRef<MobileControlSettings>(mobileSettings);
@@ -203,19 +228,27 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   }, []);
 
   // Direct snapshot refs for zero-latency 60-144 FPS rendering
+  const initialObstacles = (obstacles && obstacles.length > 0) ? obstacles : (map?.obstacles || []);
   const serverPlayersRef = useRef<Record<string, Partial<Player>>>(players);
-  const serverObstaclesRef = useRef<MapObstacle[]>(obstacles);
-  const serverPowerUpsRef = useRef<PowerUp[]>(powerUps);
+  const serverObstaclesRef = useRef<MapObstacle[]>(initialObstacles);
+  const serverPowerUpsRef = useRef<PowerUp[]>(powerUps || []);
 
   // Keep refs in sync when props update
   useEffect(() => {
     serverPlayersRef.current = players;
   }, [players]);
   useEffect(() => {
-    serverObstaclesRef.current = obstacles;
+    if (obstacles && obstacles.length > 0) {
+      serverObstaclesRef.current = obstacles;
+    }
   }, [obstacles]);
   useEffect(() => {
-    serverPowerUpsRef.current = powerUps;
+    if (map?.obstacles && map.obstacles.length > 0 && (!serverObstaclesRef.current || serverObstaclesRef.current.length === 0)) {
+      serverObstaclesRef.current = map.obstacles;
+    }
+  }, [map]);
+  useEffect(() => {
+    if (powerUps) serverPowerUpsRef.current = powerUps;
   }, [powerUps]);
 
   // Input states
@@ -379,6 +412,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
         // Obstacles collision resolution
         for (const obs of currentObstacles) {
+          if (obs.type === 'portal' || obs.type === 'gravity_well') continue;
           if (obs.type === 'explosive_core' && (obs.health ?? 0) <= 0) continue;
           const closestX = Math.max(obs.x, Math.min(simX, obs.x + obs.width));
           const closestY = Math.max(obs.y, Math.min(simY, obs.y + obs.height));
@@ -450,11 +484,15 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       if (tick.obstacles && tick.obstacles.length > 0) serverObstaclesRef.current = tick.obstacles;
       if (tick.powerUps) serverPowerUpsRef.current = tick.powerUps;
       if (tick.boss !== undefined) bossRef.current = tick.boss;
+      if (tick.currentEvent !== undefined) {
+        currentEventRef.current = tick.currentEvent;
+      }
       localProjectiles.current = tick.projectiles.map((b) => ({ ...b }));
 
       const lp = updated[localPlayerId];
       if (lp) {
-        reconcileLocalPlayer(lp, serverObstaclesRef.current);
+        const activeObs = serverObstaclesRef.current.length > 0 ? serverObstaclesRef.current : (obstacles && obstacles.length > 0 ? obstacles : (map?.obstacles || []));
+        reconcileLocalPlayer(lp, activeObs);
       }
 
       // Refresh HUD at ~6 Hz or immediately on damage/death event
@@ -462,6 +500,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       const hasDamageEvent = lp && (lp.health !== prevHealth.current || lp.shield !== prevShield.current || lp.isDead !== prevDead.current);
       if (hasDamageEvent || now - lastHudUpdateTime.current >= 160) {
         lastHudUpdateTime.current = now;
+        setActiveEvent(currentEventRef.current ? { ...currentEventRef.current } : null);
         setHudTick((c) => c + 1);
       }
     });
@@ -926,8 +965,12 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         localPredictedPos.current.y = Math.max(r, Math.min(activeMapHeight - r, localPredictedPos.current.y));
 
         // Obstacle collisions on predicted position
-        const currentObstacles = serverObstaclesRef.current.length > 0 ? serverObstaclesRef.current : obstacles;
+        const currentObstacles =
+          serverObstaclesRef.current.length > 0
+            ? serverObstaclesRef.current
+            : (obstacles && obstacles.length > 0 ? obstacles : (activeMap?.obstacles || map?.obstacles || []));
         for (const obs of currentObstacles) {
+          if (obs.type === 'portal' || obs.type === 'gravity_well') continue;
           if (obs.type === 'explosive_core' && (obs.health ?? 0) <= 0) continue;
           const closestX = Math.max(obs.x, Math.min(localPredictedPos.current.x, obs.x + obs.width));
           const closestY = Math.max(obs.y, Math.min(localPredictedPos.current.y, obs.y + obs.height));
@@ -1053,11 +1096,115 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       try {
         ctx.translate(-camera.current.x + shakeX, -camera.current.y + shakeY);
 
-      // Draw Arena Outer Boundaries
-      ctx.strokeStyle = '#06b6d4';
+      // Draw Arena Interior Biome Background & Environmental Effects
+      const mapTheme = activeMap.theme || 'cyan';
+      if (mapTheme === 'purple') {
+        // Nebula Arena: Deep interstellar nebula space with glowing violet/magenta gas clouds
+        ctx.fillStyle = '#0a0614';
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+
+        // Soft swirling interstellar gas clouds (optimized radial gradients)
+        const g1 = ctx.createRadialGradient(activeMapWidth * 0.28, activeMapHeight * 0.35, 60, activeMapWidth * 0.28, activeMapHeight * 0.35, 600);
+        g1.addColorStop(0, 'rgba(168, 85, 247, 0.22)');
+        g1.addColorStop(0.5, 'rgba(217, 70, 239, 0.09)');
+        g1.addColorStop(1, 'rgba(10, 6, 20, 0)');
+        ctx.fillStyle = g1;
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+
+        const g2 = ctx.createRadialGradient(activeMapWidth * 0.72, activeMapHeight * 0.65, 80, activeMapWidth * 0.72, activeMapHeight * 0.65, 650);
+        g2.addColorStop(0, 'rgba(192, 132, 252, 0.18)');
+        g2.addColorStop(0.6, 'rgba(236, 72, 153, 0.08)');
+        g2.addColorStop(1, 'rgba(10, 6, 20, 0)');
+        ctx.fillStyle = g2;
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+
+        // Central plasma storm aura
+        const gCenter = ctx.createRadialGradient(activeMapWidth * 0.5, activeMapHeight * 0.5, 30, activeMapWidth * 0.5, activeMapHeight * 0.5, 380);
+        gCenter.addColorStop(0, 'rgba(236, 72, 153, 0.18)');
+        gCenter.addColorStop(1, 'rgba(10, 6, 20, 0)');
+        ctx.fillStyle = gCenter;
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+      } else if (mapTheme === 'amber') {
+        // Asteroid Field: Ancient craggy asteroid belt with warm amber dust lanes
+        ctx.fillStyle = '#0d0a07';
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+
+        const g = ctx.createRadialGradient(activeMapWidth * 0.5, activeMapHeight * 0.5, 120, activeMapWidth * 0.5, activeMapHeight * 0.5, activeMapWidth * 0.55);
+        g.addColorStop(0, 'rgba(217, 119, 6, 0.16)');
+        g.addColorStop(0.5, 'rgba(180, 83, 9, 0.07)');
+        g.addColorStop(1, 'rgba(13, 10, 7, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+      } else if (mapTheme === 'emerald') {
+        // Crystal Expanse: Alien emerald quadrant with crystalline aurora ribbons
+        ctx.fillStyle = '#030e09';
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+
+        const g = ctx.createRadialGradient(activeMapWidth * 0.5, activeMapHeight * 0.45, 100, activeMapWidth * 0.5, activeMapHeight * 0.45, 750);
+        g.addColorStop(0, 'rgba(16, 185, 129, 0.19)');
+        g.addColorStop(0.6, 'rgba(5, 150, 105, 0.08)');
+        g.addColorStop(1, 'rgba(3, 14, 9, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+      } else if (mapTheme === 'blue') {
+        // Void Arena: Dark minimal void with stark glowing accents & central gravity distortion aura
+        ctx.fillStyle = '#02040b';
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+
+        const cx = activeMapWidth * 0.5;
+        const cy = activeMapHeight * 0.5;
+        const g = ctx.createRadialGradient(cx, cy, 40, cx, cy, 480);
+        g.addColorStop(0, 'rgba(59, 130, 246, 0.22)');
+        g.addColorStop(0.7, 'rgba(37, 99, 235, 0.06)');
+        g.addColorStop(1, 'rgba(2, 4, 11, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+      } else if (mapTheme === 'violet') {
+        // Titan Void Sector
+        ctx.fillStyle = '#090314';
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+
+        const g = ctx.createRadialGradient(activeMapWidth * 0.5, activeMapHeight * 0.5, 200, activeMapWidth * 0.5, activeMapHeight * 0.5, activeMapWidth * 0.45);
+        g.addColorStop(0, 'rgba(139, 92, 246, 0.15)');
+        g.addColorStop(1, 'rgba(9, 3, 20, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+      } else {
+        // Orbital Station (Tech Cyan)
+        ctx.fillStyle = '#040912';
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+
+        const g = ctx.createRadialGradient(activeMapWidth * 0.5, activeMapHeight * 0.5, 100, activeMapWidth * 0.5, activeMapHeight * 0.5, 700);
+        g.addColorStop(0, 'rgba(6, 182, 212, 0.14)');
+        g.addColorStop(1, 'rgba(4, 9, 18, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+      }
+
+      // Draw Arena Outer Boundaries (Themed per map biome)
+      let boundaryColor = '#06b6d4';
+      let gridColor = 'rgba(6, 182, 212, 0.08)';
+      if (mapTheme === 'purple') {
+        boundaryColor = '#c084fc';
+        gridColor = 'rgba(192, 132, 252, 0.09)';
+      } else if (mapTheme === 'amber') {
+        boundaryColor = '#d97706';
+        gridColor = 'rgba(245, 158, 11, 0.08)';
+      } else if (mapTheme === 'emerald') {
+        boundaryColor = '#10b981';
+        gridColor = 'rgba(16, 185, 129, 0.08)';
+      } else if (mapTheme === 'blue') {
+        boundaryColor = '#3b82f6';
+        gridColor = 'rgba(59, 130, 246, 0.08)';
+      } else if (mapTheme === 'violet') {
+        boundaryColor = '#8b5cf6';
+        gridColor = 'rgba(139, 92, 246, 0.09)';
+      }
+
+      ctx.strokeStyle = boundaryColor;
       ctx.lineWidth = 4;
       if (useGlow) {
-        ctx.shadowColor = '#06b6d4';
+        ctx.shadowColor = boundaryColor;
         ctx.shadowBlur = 18;
       }
       ctx.strokeRect(0, 0, activeMapWidth, activeMapHeight);
@@ -1065,7 +1212,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
 
       // Draw Cyber Grid Lines
       const gridSize = 64;
-      ctx.strokeStyle = 'rgba(6, 182, 212, 0.08)';
+      ctx.strokeStyle = gridColor;
       ctx.lineWidth = 1;
       const startX = Math.max(0, Math.floor(camera.current.x / gridSize) * gridSize);
       const endX = Math.min(activeMapWidth, camera.current.x + width + gridSize);
@@ -1083,62 +1230,450 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       }
       ctx.stroke();
 
-      // 5. Draw Obstacles
-      const currentObstaclesList = serverObstaclesRef.current.length > 0 ? serverObstaclesRef.current : obstacles;
+      // 5. Draw Obstacles (Themed & Tactically Distinct per Map Type)
+      const currentObstaclesList =
+        serverObstaclesRef.current.length > 0
+          ? serverObstaclesRef.current
+          : (obstacles && obstacles.length > 0 ? obstacles : (activeMap?.obstacles || map?.obstacles || []));
       for (const obs of currentObstaclesList) {
         if (obs.type === 'barrier') {
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-          ctx.strokeStyle = '#38bdf8';
-          ctx.lineWidth = 2;
-          if (useGlow) {
-            ctx.shadowColor = '#38bdf8';
-            ctx.shadowBlur = 8;
-          }
-          ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
-          if (useGlow) ctx.shadowBlur = 0;
-
-          // Diagonal warning stripes
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
-          ctx.beginPath();
-          ctx.moveTo(obs.x, obs.y);
-          ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
-          ctx.stroke();
-        } else if (obs.type === 'bumper') {
-          ctx.fillStyle = '#451a03';
-          ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-          ctx.strokeStyle = '#f59e0b';
-          ctx.lineWidth = 3;
-          if (useGlow) {
-            ctx.shadowColor = '#f59e0b';
-            ctx.shadowBlur = 12;
-          }
-          ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
-          if (useGlow) ctx.shadowBlur = 0;
-
-          ctx.fillStyle = '#f59e0b';
-          ctx.beginPath();
-          ctx.arc(obs.x + obs.width / 2, obs.y + obs.height / 2, 12, 0, Math.PI * 2);
-          ctx.fill();
-        } else if (obs.type === 'explosive_core') {
-          if ((obs.health ?? 1) > 0) {
-            const pulse = (Math.sin(time * 0.008) + 1) / 2;
-            ctx.fillStyle = `rgba(225, 29, 72, ${0.4 + pulse * 0.4})`;
+          if (mapTheme === 'amber') {
+            // Asteroid Field: Ancient craggy space rocks with faceted mineral ridges
+            ctx.fillStyle = '#292524';
             ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
-            ctx.strokeStyle = '#f43f5e';
+            ctx.strokeStyle = '#d97706';
             ctx.lineWidth = 2;
+            ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+
+            // Chiseled rock facets & mineral veins
+            ctx.strokeStyle = 'rgba(217, 119, 6, 0.35)';
+            ctx.beginPath();
+            ctx.moveTo(obs.x + 8, obs.y + 6);
+            ctx.lineTo(obs.x + obs.width * 0.45, obs.y + obs.height * 0.7);
+            ctx.lineTo(obs.x + obs.width - 8, obs.y + 12);
+            ctx.stroke();
+
+            // Rocky crater details
+            ctx.fillStyle = '#1c1917';
+            ctx.beginPath();
+            ctx.arc(obs.x + Math.min(obs.width * 0.25, 22), obs.y + Math.min(obs.height * 0.35, 22), 6, 0, Math.PI * 2);
+            ctx.fill();
+            if (obs.width > 100) {
+              ctx.beginPath();
+              ctx.arc(obs.x + obs.width * 0.75, obs.y + obs.height * 0.65, 8, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          } else if (mapTheme === 'emerald') {
+            // Crystal Expanse: Faceted alien crystal monoliths with refractive emerald bevels
+            ctx.fillStyle = '#064e3b';
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.strokeStyle = '#34d399';
+            ctx.lineWidth = 2.5;
             if (useGlow) {
-              ctx.shadowColor = '#f43f5e';
-              ctx.shadowBlur = 15;
+              ctx.shadowColor = '#10b981';
+              ctx.shadowBlur = 10;
             }
             ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
             if (useGlow) ctx.shadowBlur = 0;
 
+            // Diamond crystal facets & refractive lines
+            ctx.strokeStyle = 'rgba(52, 211, 153, 0.4)';
+            ctx.beginPath();
+            ctx.moveTo(obs.x, obs.y);
+            ctx.lineTo(obs.x + obs.width / 2, obs.y + obs.height / 2);
+            ctx.lineTo(obs.x + obs.width, obs.y);
+            ctx.moveTo(obs.x, obs.y + obs.height);
+            ctx.lineTo(obs.x + obs.width / 2, obs.y + obs.height / 2);
+            ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+            ctx.stroke();
+
+            // Glowing central prism gem
+            ctx.fillStyle = '#6ee7b7';
+            ctx.beginPath();
+            ctx.arc(obs.x + obs.width / 2, obs.y + obs.height / 2, 4, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (mapTheme === 'purple') {
+            // Nebula Arena: Deep purple interstellar alloy hull with glowing fuchsia conduit
+            ctx.fillStyle = '#1e1136';
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.strokeStyle = '#a855f7';
+            ctx.lineWidth = 2;
+            if (useGlow) {
+              ctx.shadowColor = '#c084fc';
+              ctx.shadowBlur = 9;
+            }
+            ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+            if (useGlow) ctx.shadowBlur = 0;
+
+            // Central energy plasma conduit
+            ctx.strokeStyle = 'rgba(232, 121, 249, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            if (obs.width >= obs.height) {
+              ctx.moveTo(obs.x + 8, obs.y + obs.height / 2);
+              ctx.lineTo(obs.x + obs.width - 8, obs.y + obs.height / 2);
+            } else {
+              ctx.moveTo(obs.x + obs.width / 2, obs.y + 8);
+              ctx.lineTo(obs.x + obs.width / 2, obs.y + obs.height - 8);
+            }
+            ctx.stroke();
+          } else if (mapTheme === 'blue') {
+            // Void Arena: Stark high-contrast minimalist deep space monoliths
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 2.5;
+            if (useGlow) {
+              ctx.shadowColor = '#60a5fa';
+              ctx.shadowBlur = 12;
+            }
+            ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+            if (useGlow) ctx.shadowBlur = 0;
+
+            // Sleek high-tech corner brackets
+            ctx.fillStyle = '#60a5fa';
+            ctx.fillRect(obs.x + 2, obs.y + 2, 5, 5);
+            ctx.fillRect(obs.x + obs.width - 7, obs.y + 2, 5, 5);
+            ctx.fillRect(obs.x + 2, obs.y + obs.height - 7, 5, 5);
+            ctx.fillRect(obs.x + obs.width - 7, obs.y + obs.height - 7, 5, 5);
+          } else {
+            // Orbital Station / Default: High-tech armored station bulkhead with hazard plating
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 2;
+            if (useGlow) {
+              ctx.shadowColor = '#38bdf8';
+              ctx.shadowBlur = 8;
+            }
+            ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+            if (useGlow) ctx.shadowBlur = 0;
+
+            // Station diagonal warning hazard stripes
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+            ctx.beginPath();
+            ctx.moveTo(obs.x, obs.y);
+            ctx.lineTo(obs.x + obs.width, obs.y + obs.height);
+            ctx.stroke();
+
+            // Status LED sensor dots
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(obs.x + 3, obs.y + 3, 3, 3);
+            ctx.fillRect(obs.x + obs.width - 6, obs.y + 3, 3, 3);
+          }
+        } else if (obs.type === 'bumper') {
+          // Kinetic Bumpers themed per arena
+          if (mapTheme === 'amber') {
+            // Rotating kinetic tumbling asteroid rock
+            ctx.fillStyle = '#451a03';
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+
+            ctx.fillStyle = '#b45309';
+            ctx.beginPath();
+            ctx.arc(obs.x + obs.width / 2, obs.y + obs.height / 2, obs.width * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#78350f';
+            ctx.beginPath();
+            ctx.arc(obs.x + obs.width * 0.42, obs.y + obs.height * 0.42, 5, 0, Math.PI * 2);
+            ctx.fill();
+          } else if (mapTheme === 'emerald') {
+            // Prismatic emerald crystal resonator
+            ctx.fillStyle = '#064e3b';
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 3;
+            if (useGlow) {
+              ctx.shadowColor = '#34d399';
+              ctx.shadowBlur = 12;
+            }
+            ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+            if (useGlow) ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#34d399';
+            ctx.beginPath();
+            const cx = obs.x + obs.width / 2;
+            const cy = obs.y + obs.height / 2;
+            const r = obs.width * 0.35;
+            ctx.moveTo(cx, cy - r);
+            ctx.lineTo(cx + r, cy);
+            ctx.lineTo(cx, cy + r);
+            ctx.lineTo(cx - r, cy);
+            ctx.closePath();
+            ctx.fill();
+          } else if (mapTheme === 'purple') {
+            // Nebula dust kinetic deflector buoy
+            ctx.fillStyle = '#2e1065';
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.strokeStyle = '#ec4899';
+            ctx.lineWidth = 3;
+            if (useGlow) {
+              ctx.shadowColor = '#f472b6';
+              ctx.shadowBlur = 12;
+            }
+            ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+            if (useGlow) ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#ec4899';
+            ctx.beginPath();
+            ctx.arc(obs.x + obs.width / 2, obs.y + obs.height / 2, obs.width * 0.32, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            // High-tech station deflector coil
+            ctx.fillStyle = '#082f49';
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 3;
+            if (useGlow) {
+              ctx.shadowColor = '#38bdf8';
+              ctx.shadowBlur = 12;
+            }
+            ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+            if (useGlow) ctx.shadowBlur = 0;
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(obs.x + obs.width / 2, obs.y + obs.height / 2, 12, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        } else if (obs.type === 'explosive_core') {
+          if ((obs.health ?? 1) > 0) {
+            const pulse = (Math.sin(time * 0.008) + 1) / 2;
+            const coreColor = mapTheme === 'amber' ? '#f59e0b' : mapTheme === 'emerald' ? '#10b981' : mapTheme === 'purple' ? '#d946ef' : '#f43f5e';
+            ctx.fillStyle = `${coreColor}33`;
+            ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+            ctx.strokeStyle = coreColor;
+            ctx.lineWidth = 2.5;
+            if (useGlow) {
+              ctx.shadowColor = coreColor;
+              ctx.shadowBlur = 16;
+            }
+            ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+            if (useGlow) ctx.shadowBlur = 0;
+
+            // Core pulsating energy sphere
+            ctx.fillStyle = coreColor;
+            ctx.beginPath();
+            ctx.arc(obs.x + obs.width / 2, obs.y + obs.height / 2, (obs.width * 0.22) * (0.8 + pulse * 0.3), 0, Math.PI * 2);
+            ctx.fill();
+
             const maxHp = obs.maxHealth || 60;
             const curHp = obs.health || 0;
             const pct = Math.max(0, curHp / maxHp);
-            ctx.fillStyle = '#e11d48';
+            ctx.fillStyle = coreColor;
             ctx.fillRect(obs.x, obs.y - 8, obs.width * pct, 4);
+          }
+        } else if (obs.type === 'portal') {
+          // Wormhole Portal: Rotating dual rings with emerald/cyan accretion glow
+          const cx = obs.x + obs.width / 2;
+          const cy = obs.y + obs.height / 2;
+          const r = obs.width / 2;
+          const rot = time * 0.0025;
+
+          // Outer rotating ring
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 3;
+          if (useGlow) {
+            ctx.shadowColor = '#10b981';
+            ctx.shadowBlur = 16;
+          }
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.stroke();
+          if (useGlow) ctx.shadowBlur = 0;
+
+          // Inner rotating swirl lines
+          ctx.strokeStyle = 'rgba(52, 211, 153, 0.6)';
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 4; i++) {
+            const a = rot + (i * Math.PI) / 2;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 0.65, a, a + Math.PI / 3);
+            ctx.stroke();
+          }
+
+          // Center event horizon vortex
+          ctx.fillStyle = '#064e3b';
+          ctx.beginPath();
+          ctx.arc(cx, cy, r * 0.35, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (obs.type === 'gravity_well') {
+          // Gravitational Singularity: Accretion disk with event horizon
+          const cx = obs.x + obs.width / 2;
+          const cy = obs.y + obs.height / 2;
+          const r = obs.width / 2;
+          const pullR = obs.pullRadius || 360;
+          const rot = -time * 0.002;
+
+          // Subtle dashed gravity influence horizon
+          ctx.strokeStyle = 'rgba(59, 130, 246, 0.15)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([8, 8]);
+          ctx.beginPath();
+          ctx.arc(cx, cy, pullR, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // Swirling blue-violet accretion aura
+          ctx.strokeStyle = '#3b82f6';
+          ctx.lineWidth = 2.5;
+          if (useGlow) {
+            ctx.shadowColor = '#60a5fa';
+            ctx.shadowBlur = 18;
+          }
+          ctx.beginPath();
+          ctx.arc(cx, cy, r, 0, Math.PI * 2);
+          ctx.stroke();
+          if (useGlow) ctx.shadowBlur = 0;
+
+          // Accretion spiral streams
+          ctx.strokeStyle = 'rgba(96, 165, 250, 0.5)';
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 3; i++) {
+            const a = rot + (i * Math.PI * 2) / 3;
+            ctx.beginPath();
+            ctx.arc(cx, cy, r * 0.7, a, a + Math.PI / 2);
+            ctx.stroke();
+          }
+
+          // Pitch-black singularity core
+          ctx.fillStyle = '#020617';
+          ctx.beginPath();
+          ctx.arc(cx, cy, r * 0.45, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // 5.5. Draw Dynamic Event Hazards & Environmental Map Effects
+      const liveEvt = currentEventRef.current;
+      if (liveEvt) {
+        // A. Draw Hazards
+        if (liveEvt.hazards && liveEvt.hazards.length > 0) {
+          for (const hz of liveEvt.hazards) {
+            if (hz.hazardType === 'meteor' || (!hz.hazardType && hz.radius)) {
+              // Meteor / Orbital Barrage target impact zone
+              const isWarning = liveEvt.phase === 'warning';
+              const pulse = (Math.sin(time * 0.012) + 1) / 2;
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(hz.x, hz.y, hz.radius, 0, Math.PI * 2);
+              ctx.fillStyle = isWarning ? 'rgba(245, 158, 11, 0.18)' : 'rgba(239, 68, 68, 0.28)';
+              ctx.fill();
+              ctx.strokeStyle = isWarning ? '#f59e0b' : '#ef4444';
+              ctx.lineWidth = 2.5;
+              if (useGlow) {
+                ctx.shadowColor = isWarning ? '#fbbf24' : '#f87171';
+                ctx.shadowBlur = 14;
+              }
+              ctx.stroke();
+
+              // Inner warning countdown ring
+              ctx.beginPath();
+              ctx.arc(hz.x, hz.y, Math.max(8, hz.radius * (0.35 + pulse * 0.45)), 0, Math.PI * 2);
+              ctx.strokeStyle = isWarning ? 'rgba(251, 191, 36, 0.7)' : 'rgba(248, 113, 113, 0.85)';
+              ctx.lineWidth = 2;
+              ctx.stroke();
+
+              // Crosshair danger marker
+              ctx.strokeStyle = isWarning ? '#fbbf24' : '#f87171';
+              ctx.lineWidth = 1.5;
+              ctx.beginPath();
+              ctx.moveTo(hz.x - 14, hz.y);
+              ctx.lineTo(hz.x + 14, hz.y);
+              ctx.moveTo(hz.x, hz.y - 14);
+              ctx.lineTo(hz.x, hz.y + 14);
+              ctx.stroke();
+              ctx.restore();
+            } else if (hz.hazardType === 'laser_beam' && hz.x2 !== undefined && hz.y2 !== undefined) {
+              // Station Security Grid Sweeping Laser
+              ctx.save();
+              // Broad hazard zone
+              ctx.strokeStyle = 'rgba(239, 68, 68, 0.22)';
+              ctx.lineWidth = 26;
+              ctx.beginPath();
+              ctx.moveTo(hz.x, hz.y);
+              ctx.lineTo(hz.x2, hz.y2);
+              ctx.stroke();
+
+              // Burning core laser
+              ctx.strokeStyle = '#ef4444';
+              ctx.lineWidth = 4;
+              if (useGlow) {
+                ctx.shadowColor = '#f87171';
+                ctx.shadowBlur = 18;
+              }
+              ctx.beginPath();
+              ctx.moveTo(hz.x, hz.y);
+              ctx.lineTo(hz.x2, hz.y2);
+              ctx.stroke();
+              ctx.restore();
+            } else if (hz.hazardType === 'antimatter_ring') {
+              // Antimatter Pulse expanding wave
+              ctx.save();
+              ctx.strokeStyle = '#818cf8';
+              ctx.lineWidth = 4;
+              if (useGlow) {
+                ctx.shadowColor = '#a5b4fc';
+                ctx.shadowBlur = 22;
+              }
+              ctx.beginPath();
+              ctx.arc(hz.x, hz.y, hz.radius, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.restore();
+            } else if (hz.hazardType === 'rift') {
+              // Quantum Wormhole Rift
+              ctx.save();
+              const rot = time * 0.0035;
+              ctx.strokeStyle = '#a855f7';
+              ctx.lineWidth = 3.5;
+              if (useGlow) {
+                ctx.shadowColor = '#c084fc';
+                ctx.shadowBlur = 18;
+              }
+              ctx.beginPath();
+              ctx.arc(hz.x, hz.y, hz.radius, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.fillStyle = 'rgba(168, 85, 247, 0.25)';
+              ctx.fill();
+
+              ctx.strokeStyle = 'rgba(236, 72, 153, 0.7)';
+              ctx.lineWidth = 2;
+              for (let i = 0; i < 3; i++) {
+                const a = rot + (i * Math.PI * 2) / 3;
+                ctx.beginPath();
+                ctx.arc(hz.x, hz.y, hz.radius * 0.6, a, a + Math.PI / 2);
+                ctx.stroke();
+              }
+              ctx.restore();
+            }
+          }
+        }
+
+        // B. Ambient Event Effects on World
+        if (liveEvt.phase === 'active') {
+          if (liveEvt.type === 'SOLAR_FLARE') {
+            ctx.fillStyle = 'rgba(249, 115, 22, 0.09)';
+            ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+          } else if (liveEvt.type === 'BLACKOUT') {
+            ctx.fillStyle = 'rgba(2, 6, 23, 0.55)';
+            ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+          } else if (liveEvt.type === 'NEBULA_PLASMA_SURGE') {
+            ctx.fillStyle = 'rgba(217, 70, 239, 0.07)';
+            ctx.fillRect(0, 0, activeMapWidth, activeMapHeight);
+          } else if (liveEvt.type === 'CRYSTALLINE_REGENERATION') {
+            for (const obs of currentObstaclesList) {
+              if (obs.type === 'barrier') {
+                const ocx = obs.x + obs.width / 2;
+                const ocy = obs.y + obs.height / 2;
+                ctx.strokeStyle = 'rgba(52, 211, 153, 0.25)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(ocx, ocy, 170, 0, Math.PI * 2);
+                ctx.stroke();
+              }
+            }
           }
         }
       }
@@ -1210,10 +1745,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           color = '#c026d3';
           label = '4X';
           textSub = 'QUAD DMG';
-        } else if (pu.type === 'homing_missile') {
-          color = '#e11d48';
-          label = '🎯';
-          textSub = 'HOMING';
         } else if (pu.type === 'stealth_cloak') {
           color = '#8b5cf6';
           label = '👁️';
@@ -1226,14 +1757,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           color = '#eab308';
           label = '👑';
           textSub = 'MATRIX';
-        } else if (pu.type === 'mod_homing') {
-          color = '#38bdf8';
-          label = '🎯';
-          textSub = 'HOMING';
-        } else if (pu.type === 'mod_piercing') {
-          color = '#f59e0b';
-          label = '⚡';
-          textSub = 'PIERCE';
         } else if (pu.type === 'mod_split') {
           color = '#ec4899';
           label = '💥';
@@ -1246,10 +1769,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           color = '#8b5cf6';
           label = '🔄';
           textSub = 'RICOCHET';
-        } else if (pu.type === 'mod_rapid_fire') {
-          color = '#10b981';
-          label = '⚡';
-          textSub = 'RAPID FIRE';
         } else if (pu.type === 'mod_overcharge') {
           color = '#f97316';
           label = '🔋';
@@ -1315,7 +1834,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ctx.save();
         if (useGlow) {
           ctx.shadowColor = b.color;
-          ctx.shadowBlur = b.homing ? 14 : 10;
+          ctx.shadowBlur = 10;
         }
         ctx.fillStyle = b.color;
 
@@ -2053,9 +2572,74 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             >
               {formatTime(timeRemaining)}
             </div>
-            <span className="text-[10px] font-mono text-cyan-400/70 tracking-widest mt-0.5 uppercase">
-              {boss ? 'РЕЙД НА БОССА' : t.arenaCombat}
-            </span>
+            <button
+              onClick={() => setShowMapDetailsModal(true)}
+              className="mt-1 px-3 py-1.5 rounded-xl bg-slate-950/90 hover:bg-slate-900/90 border border-cyan-500/50 hover:border-cyan-400 flex items-center gap-2 text-[11px] font-mono text-cyan-200 transition-all cursor-pointer shadow-lg group pointer-events-auto max-w-md"
+              title={lang === 'ru' ? 'Нажмите для просмотра особенностей карты' : 'Click to inspect arena tactical features'}
+            >
+              <span className={`w-2 h-2 rounded-full shrink-0 ${
+                map.theme === 'purple' ? 'bg-purple-400 shadow-[0_0_8px_#c084fc]' :
+                map.theme === 'amber' ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' :
+                map.theme === 'emerald' ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]' :
+                map.theme === 'blue' ? 'bg-blue-400 shadow-[0_0_8px_#3b82f6]' :
+                map.theme === 'violet' ? 'bg-fuchsia-400 shadow-[0_0_8px_#d946ef]' :
+                'bg-cyan-400 shadow-[0_0_8px_#06b6d4]'
+              } group-hover:scale-125 transition-transform`} />
+              <span className="font-orbitron font-bold text-white shrink-0">
+                {lang === 'ru' ? (map.nameRu || map.name) : (map.nameEn || map.name)}
+              </span>
+              <span className="text-slate-400 shrink-0">•</span>
+              <span className="text-[10px] text-cyan-300 font-sans truncate">
+                ⚡ {lang === 'ru' ? (map.gameplayFeatureRu || map.gameplayFeature) : (map.gameplayFeatureEn || map.gameplayFeature)}
+              </span>
+              <span className="text-[9px] font-mono text-cyan-400 px-1 py-0.2 rounded bg-cyan-950 border border-cyan-700/60 shrink-0">
+                ℹ️ {lang === 'ru' ? 'Инфо' : 'Info'}
+              </span>
+            </button>
+
+            {/* DYNAMIC ARENA EVENT BANNER */}
+            {activeEvent && (
+              <div
+                onClick={() => setShowMapDetailsModal(true)}
+                className={`mt-1.5 px-3.5 py-1.5 rounded-xl border backdrop-blur-md shadow-xl flex items-center gap-2.5 transition-all cursor-pointer pointer-events-auto max-w-lg ${
+                  activeEvent.phase === 'warning'
+                    ? 'bg-amber-950/85 border-amber-500/80 shadow-[0_0_20px_rgba(245,158,11,0.35)] animate-pulse'
+                    : 'bg-gradient-to-r from-rose-950/90 via-slate-950/95 to-purple-950/90 border-rose-500/80 shadow-[0_0_25px_rgba(244,63,94,0.45)]'
+                }`}
+              >
+                <div className="shrink-0">
+                  {activeEvent.phase === 'warning' ? (
+                    <AlertTriangle className="w-4 h-4 text-amber-400 animate-bounce" />
+                  ) : (
+                    <Flame className="w-4 h-4 text-rose-400 animate-pulse" />
+                  )}
+                </div>
+                <div className="flex flex-col text-left">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-orbitron font-black tracking-wide uppercase ${
+                      activeEvent.phase === 'warning' ? 'text-amber-300' : 'text-rose-300'
+                    }`}>
+                      {activeEvent.phase === 'warning'
+                        ? (lang === 'ru' ? '⚠️ ПРЕДУПРЕЖДЕНИЕ АРЕНЫ' : '⚠️ ARENA EVENT WARNING')
+                        : (lang === 'ru' ? '🔥 СОБЫТИЕ АРЕНЫ' : '🔥 ACTIVE ARENA EVENT')}
+                    </span>
+                    <span className="font-orbitron font-bold text-xs text-white">
+                      {lang === 'ru' ? (activeEvent.nameRu || activeEvent.name) : (activeEvent.nameEn || activeEvent.name)}
+                    </span>
+                    <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
+                      activeEvent.phase === 'warning'
+                        ? 'bg-amber-900/70 border-amber-500 text-amber-200'
+                        : 'bg-rose-900/70 border-rose-500 text-rose-200'
+                    }`}>
+                      {activeEvent.phase === 'warning' ? `${activeEvent.warningSecondsLeft}s` : `${activeEvent.activeSecondsLeft}s`}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-200 font-sans leading-tight line-clamp-1 mt-0.5">
+                    {lang === 'ru' ? (activeEvent.descriptionRu || activeEvent.description) : (activeEvent.descriptionEn || activeEvent.description)}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right: Radar, Settings Gear & Kill feed */}
@@ -2226,6 +2810,41 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               <span className="text-[9px] font-mono text-cyan-300 font-bold mt-0.5">
                 PTS: {localPlayer.score || 0}
               </span>
+            )}
+            <button
+              onClick={() => setShowMapDetailsModal(true)}
+              className="mt-0.5 px-2 py-0.5 rounded-lg bg-slate-900/90 border border-cyan-500/40 text-[9px] font-mono text-cyan-200 flex items-center gap-1.5 cursor-pointer pointer-events-auto max-w-[170px]"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                map.theme === 'purple' ? 'bg-purple-400' :
+                map.theme === 'amber' ? 'bg-amber-400' :
+                map.theme === 'emerald' ? 'bg-emerald-400' :
+                map.theme === 'blue' ? 'bg-blue-400' :
+                map.theme === 'violet' ? 'bg-fuchsia-400' :
+                'bg-cyan-400'
+              }`} />
+              <span className="truncate font-orbitron font-bold text-white text-[8px]">{lang === 'ru' ? (map.nameRu || map.name) : (map.nameEn || map.name)}</span>
+              <span className="text-[8px] text-cyan-400 shrink-0">⚡</span>
+            </button>
+
+            {/* Mobile Dynamic Event Pill */}
+            {activeEvent && (
+              <button
+                onClick={() => setShowMapDetailsModal(true)}
+                className={`mt-0.5 px-2 py-0.5 rounded-md border text-[8px] font-orbitron font-bold flex items-center gap-1 cursor-pointer pointer-events-auto ${
+                  activeEvent.phase === 'warning'
+                    ? 'bg-amber-950/90 border-amber-500 text-amber-300 animate-pulse'
+                    : 'bg-rose-950/90 border-rose-500 text-rose-300'
+                }`}
+              >
+                <span>{activeEvent.phase === 'warning' ? '⚠️' : '🔥'}</span>
+                <span className="truncate max-w-[110px]">
+                  {lang === 'ru' ? (activeEvent.nameRu || activeEvent.name) : (activeEvent.nameEn || activeEvent.name)}
+                </span>
+                <span className="font-mono text-[7px] px-1 py-0.2 rounded bg-black/40">
+                  {activeEvent.phase === 'warning' ? `${activeEvent.warningSecondsLeft}s` : `${activeEvent.activeSecondsLeft}s`}
+                </span>
+              </button>
             )}
           </div>
 
@@ -2412,6 +3031,169 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
           </div>
           <div className="text-xs sm:text-sm font-mono text-slate-300 animate-pulse">
             {t.rebuildingCore}
+          </div>
+        </div>
+      )}
+
+      {/* ARENA MATCH INTRO BRIEFING BANNER */}
+      {showMapIntro && (
+        <div className="fixed top-14 sm:top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-auto animate-in fade-in slide-in-from-top-4 duration-300 w-[90%] max-w-md">
+          <div className="bg-slate-950/95 backdrop-blur-md border border-cyan-500/60 rounded-2xl p-3 sm:p-4 shadow-[0_0_35px_rgba(6,182,212,0.35)] flex flex-col items-center text-center relative">
+            <button
+              onClick={() => setShowMapIntro(false)}
+              className="absolute top-2.5 right-2.5 text-slate-400 hover:text-white p-1 rounded-md text-xs cursor-pointer"
+              title="Закрыть"
+            >
+              ✕
+            </button>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`w-2.5 h-2.5 rounded-full ${
+                map.theme === 'purple' ? 'bg-purple-400 shadow-[0_0_8px_#c084fc]' :
+                map.theme === 'amber' ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' :
+                map.theme === 'emerald' ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]' :
+                map.theme === 'blue' ? 'bg-blue-400 shadow-[0_0_8px_#3b82f6]' :
+                map.theme === 'violet' ? 'bg-fuchsia-400 shadow-[0_0_8px_#d946ef]' :
+                'bg-cyan-400 shadow-[0_0_8px_#06b6d4]'
+              }`} />
+              <span className="text-[10px] font-orbitron font-bold text-cyan-400 uppercase tracking-widest">
+                {lang === 'ru' ? 'АРЕНА БОЯ' : 'ARENA DEPLOYMENT'}
+              </span>
+            </div>
+            <h3 className="font-orbitron font-black text-sm sm:text-base text-white tracking-wide">
+              {lang === 'ru' ? (map.nameRu || map.name) : (map.nameEn || map.name)}
+            </h3>
+            <p className="text-[11px] text-cyan-200 font-sans mt-1 leading-snug">
+              ⚡ {lang === 'ru' ? (map.gameplayFeatureRu || map.gameplayFeature) : (map.gameplayFeatureEn || map.gameplayFeature)}
+            </p>
+            <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-slate-300 mt-2">
+              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700">
+                📐 {mapWidth}x{mapHeight}
+              </span>
+              <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-600/70 text-emerald-300 font-bold">
+                ⚔️ {lang === 'ru' ? (map.openCoverRatioRu || map.openCoverRatio || '68% Открыто') : (map.openCoverRatio || '68% Open')}
+              </span>
+              <button
+                onClick={() => { setShowMapIntro(false); setShowMapDetailsModal(true); }}
+                className="px-2 py-0.5 rounded bg-cyan-900/60 hover:bg-cyan-800/80 border border-cyan-500/70 text-cyan-200 cursor-pointer"
+              >
+                {lang === 'ru' ? 'Тактика ℹ️' : 'Tactics ℹ️'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DETAILED ARENA TACTICAL BRIEFING MODAL */}
+      {showMapDetailsModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in pointer-events-auto">
+          <div className="bg-slate-950 border border-cyan-500/60 rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-[0_0_40px_rgba(6,182,212,0.3)] relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setShowMapDetailsModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg text-sm cursor-pointer"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`w-3 h-3 rounded-full ${
+                map.theme === 'purple' ? 'bg-purple-400 shadow-[0_0_10px_#c084fc]' :
+                map.theme === 'amber' ? 'bg-amber-400 shadow-[0_0_10px_#f59e0b]' :
+                map.theme === 'emerald' ? 'bg-emerald-400 shadow-[0_0_10px_#10b981]' :
+                map.theme === 'blue' ? 'bg-blue-400 shadow-[0_0_10px_#3b82f6]' :
+                map.theme === 'violet' ? 'bg-fuchsia-400 shadow-[0_0_10px_#d946ef]' :
+                'bg-cyan-400 shadow-[0_0_10px_#06b6d4]'
+              }`} />
+              <span className="text-xs font-orbitron font-bold text-cyan-400 tracking-wider uppercase">
+                {lang === 'ru' ? 'Тактический брифинг карты' : 'Arena Tactical Briefing'}
+              </span>
+            </div>
+
+            <h2 className="text-lg sm:text-xl font-orbitron font-black text-white mb-1">
+              {lang === 'ru' ? (map.nameRu || map.name) : (map.nameEn || map.name)}
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 font-sans mb-3 leading-relaxed">
+              {lang === 'ru' ? (map.descriptionRu || map.description) : (map.descriptionEn || map.description)}
+            </p>
+
+            <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/40 mb-3">
+              <div className="text-[11px] font-orbitron font-bold text-cyan-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                <span>⚡</span> {lang === 'ru' ? 'Главная особенность:' : 'Core Feature:'}
+              </div>
+              <div className="text-xs text-cyan-100 font-sans leading-relaxed">
+                {lang === 'ru' ? (map.gameplayFeatureRu || map.gameplayFeature) : (map.gameplayFeatureEn || map.gameplayFeature)}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3 text-xs font-mono">
+              <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                <span className="text-slate-400 block text-[10px]">{lang === 'ru' ? 'Размер' : 'Dimension'}</span>
+                <span className="font-bold text-white">{mapWidth}x{mapHeight} px</span>
+              </div>
+              <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
+                <span className="text-slate-400 block text-[10px]">{lang === 'ru' ? 'Укрытия' : 'Covers'}</span>
+                <span className="font-bold text-cyan-300">{(serverObstaclesRef.current?.length || map.obstacles?.length || 0)} {lang === 'ru' ? 'объектов' : 'objects'}</span>
+              </div>
+              <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 col-span-2 sm:col-span-1">
+                <span className="text-slate-400 block text-[10px]">{lang === 'ru' ? 'Баланс' : 'Ratio'}</span>
+                <span className="font-bold text-emerald-400">
+                  {lang === 'ru' ? (map.openCoverRatioRu || map.openCoverRatio || '68% Открыто') : (map.openCoverRatio || '68% Open')}
+                </span>
+              </div>
+            </div>
+
+            {/* Arena Events List */}
+            {(() => {
+              const arenaEvents = MAP_SPECIFIC_EVENTS[map.id] || [];
+              if (arenaEvents.length === 0) return null;
+              return (
+                <div className="mb-4">
+                  <h4 className="text-xs font-orbitron font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <span>⚡</span> {lang === 'ru' ? 'События этой карты:' : 'Arena Dynamic Events:'}
+                  </h4>
+                  <div className="space-y-2">
+                    {arenaEvents.map((evtKey) => {
+                      const def = DYNAMIC_EVENTS[evtKey];
+                      if (!def) return null;
+                      return (
+                        <div key={evtKey} className="p-2 rounded-lg bg-slate-900/80 border border-slate-800 text-left">
+                          <div className="text-[11px] font-orbitron font-bold text-cyan-300 flex items-center justify-between">
+                            <span>{lang === 'ru' ? def.nameRu : def.name}</span>
+                            <span className="text-[9px] font-mono text-amber-400">{def.activeDuration}s</span>
+                          </div>
+                          <p className="text-[10px] text-slate-300 font-sans mt-0.5 leading-snug">
+                            {lang === 'ru' ? def.descriptionRu : def.description}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Tactical Advice list */}
+            {(map.keyTactics || PRESET_METADATA[map.id as ArenaPresetId]?.keyTactics) && (
+              <div className="mb-4">
+                <h4 className="text-xs font-orbitron font-bold text-slate-300 uppercase tracking-wider mb-2">
+                  {lang === 'ru' ? 'Тактические советы для пилота:' : 'Pilot Tactical Advice:'}
+                </h4>
+                <ul className="space-y-1.5 text-xs text-slate-300 font-sans list-disc list-inside">
+                  {(lang === 'ru'
+                    ? (map.keyTacticsRu || PRESET_METADATA[map.id as ArenaPresetId]?.keyTacticsRu || map.keyTactics || [])
+                    : (map.keyTacticsEn || PRESET_METADATA[map.id as ArenaPresetId]?.keyTacticsEn || map.keyTactics || [])
+                  ).map((tac: string, i: number) => (
+                    <li key={i} className="leading-snug">{tac}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowMapDetailsModal(false)}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-orbitron font-bold text-xs tracking-wider cursor-pointer shadow-lg"
+            >
+              {lang === 'ru' ? 'ВЕРНУТЬСЯ В БОЙ' : 'RESUME COMBAT'}
+            </button>
           </div>
         </div>
       )}

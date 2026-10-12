@@ -286,6 +286,10 @@ export default function App() {
       setCoins(getSavedCoins());
     });
 
+    const unsubEventAlert = networkManager.onEventAlert(() => {
+      soundManager.playEventAlert();
+    });
+
     const unsubError = networkManager.onError((msg) => {
       setErrorMessage(msg);
       setIsConnecting(false);
@@ -303,6 +307,7 @@ export default function App() {
       unsubGameStart();
       unsubKill();
       unsubGameOver();
+      unsubEventAlert();
       unsubError();
       unsubDisconnect();
     };
@@ -322,7 +327,7 @@ export default function App() {
   }, []);
 
   // Actions
-  const handleCreateRoom = async (mapId: string = 'neon_grid', mode?: GameMode) => {
+  const handleCreateRoom = async (mapId: string = 'nebula_arena', mode?: GameMode) => {
     setIsConnecting(true);
     setErrorMessage(null);
     try {
@@ -350,12 +355,14 @@ export default function App() {
     }
   };
 
-  // Instant solo/quick play with bots
+  // Instant solo/quick play with bots across varied arena rotation
   const handleQuickPlay = async () => {
     setIsConnecting(true);
     setErrorMessage(null);
     try {
-      await networkManager.createRoom(playerName, playerColor, 'neon_grid', cosmetics);
+      const arenaPool = ['nebula_arena', 'asteroid_field', 'orbital_station', 'crystal_expanse', 'void_arena'];
+      const chosenArena = arenaPool[Math.floor(Math.random() * arenaPool.length)];
+      await networkManager.createRoom(playerName, playerColor, chosenArena, 'ffa', cosmetics);
       // Auto add 2 bots and start
       setTimeout(() => {
         networkManager.addBot();

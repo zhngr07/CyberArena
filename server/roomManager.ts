@@ -12,6 +12,7 @@ import {
 } from '../src/types/game.ts';
 import { GameEngine } from './gameEngine.ts';
 import { GAME_CONSTANTS } from '../src/data/weapons.ts';
+import { MAPS } from '../src/data/maps.ts';
 
 interface ClientConnection {
   ws: WebSocket;
@@ -203,7 +204,9 @@ export class RoomManager {
     const reconnectToken = `tok_${Math.random().toString(36).substring(2, 12)}`;
 
     const chosenMode: GameMode = gameMode || 'ffa';
-    const chosenMap = mapId || (chosenMode === 'boss_raid' ? 'boss_arena' : 'asteroid_field');
+    const targetMapKey = mapId || (chosenMode === 'boss_raid' ? 'boss_arena' : 'nebula_arena');
+    const canonicalMap = MAPS[targetMapKey] || (chosenMode === 'boss_raid' ? MAPS['boss_arena'] : MAPS['nebula_arena']);
+    const chosenMap = canonicalMap.id;
 
     const player: Player = {
       id: playerId,
@@ -257,7 +260,7 @@ export class RoomManager {
       players: { [playerId]: player },
       projectiles: [],
       powerUps: [],
-      obstacles: [],
+      obstacles: JSON.parse(JSON.stringify(canonicalMap.obstacles || [])),
       killFeed: [],
     };
 
@@ -465,11 +468,11 @@ export class RoomManager {
       assists: 0,
       weapon: (['plasma', 'burst_cannon', 'spread', 'ricochet_cannon', 'plasma_shotgun', 'missile_launcher'] as WeaponType[])[botIdx % 6],
       activeModifiers: [
-        (['homing', 'explosive', 'rapid_fire', 'ricochet', 'shield_breaker', 'freeze', 'gravity', 'chain'] as WeaponModifier[])[botIdx % 8],
+        (['split', 'explosive', 'ricochet', 'shield_breaker', 'freeze', 'gravity', 'chain', 'burn'] as WeaponModifier[])[botIdx % 8],
       ],
       loadoutWeapon: (['plasma', 'burst_cannon', 'spread', 'ricochet_cannon', 'plasma_shotgun', 'missile_launcher'] as WeaponType[])[botIdx % 6],
       loadoutModifiers: [
-        (['homing', 'explosive', 'rapid_fire', 'ricochet', 'shield_breaker', 'freeze', 'gravity', 'chain'] as WeaponModifier[])[botIdx % 8],
+        (['split', 'explosive', 'ricochet', 'shield_breaker', 'freeze', 'gravity', 'chain', 'burn'] as WeaponModifier[])[botIdx % 8],
       ],
       isDashing: false,
       dashCooldown: 0,
@@ -532,7 +535,9 @@ export class RoomManager {
     const room = this.rooms.get(conn.roomCode);
     if (!room || room.hostId !== conn.playerId || room.status !== 'waiting') return;
 
-    room.mapId = mapId;
+    const canonicalMap = MAPS[mapId] || (room.gameMode === 'boss_raid' ? MAPS['boss_arena'] : MAPS['nebula_arena']);
+    room.mapId = canonicalMap.id;
+    room.obstacles = JSON.parse(JSON.stringify(canonicalMap.obstacles || []));
     this.broadcast(conn.roomCode, { type: 'room_snapshot', room });
   }
 
@@ -647,6 +652,7 @@ export class RoomManager {
     this.engines.set(roomCode, engine);
     engine.start();
 
+    this.broadcast(roomCode, { type: 'room_snapshot', room });
     this.broadcast(roomCode, { type: 'game_started' });
   }
 
