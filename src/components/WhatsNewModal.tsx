@@ -44,6 +44,7 @@ interface WhatsNewModalProps {
 }
 
 type TabType =
+  | 'overview_09'
   | 'overview_08'
   | 'arenas_08'
   | 'overview_07'
@@ -57,7 +58,7 @@ type TabType =
   | 'archive_06';
 
 export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onToggleLang }) => {
-  const [activeTab, setActiveTab] = useState<TabType>('overview_08');
+  const [activeTab, setActiveTab] = useState<TabType>('overview_09');
   const [currentLang, setCurrentLang] = useState<Language>(lang);
 
   const isRu = currentLang === 'ru';
@@ -82,16 +83,16 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
             <div>
               <div className="flex items-center space-x-2">
                 <h2 className="font-orbitron font-black text-sm sm:text-lg text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-teal-300 to-pink-400">
-                  {isRu ? 'ЧТО НОВОГО? • BETA 0.8: COMBAT REBALANCE & ARENA EVOLUTION' : "WHAT'S NEW? • BETA 0.8: COMBAT REBALANCE & ARENA EVOLUTION"}
+                  {isRu ? 'ЧТО НОВОГО? • BETA 0.9: REMAKE UPDATE' : "WHAT'S NEW? • BETA 0.9: REMAKE UPDATE"}
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-pink-500/20 text-pink-300 border border-pink-500/40 animate-pulse">
-                  {isRu ? 'ОБНОВЛЕНИЕ 0.8' : 'UPDATE 0.8'}
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-pink-500/20 text-pink-300 border border-pink-500/40 animate-pulse">
+                  Beta 0.9 - Remake
                 </span>
               </div>
               <p className="text-[11px] font-mono text-cyan-400/80">
                 {isRu
-                  ? '5 Новых Арен • Удаление Homing, Piercing & Fire Rate • Ребаланс Оружия • Чистый Скилловый Бой'
-                  : '5 New Arenas • Removed Homing, Piercing & Fire Rate • Weapon Rebalance • Pure Skill-Based Combat'}
+                  ? 'Новое Меню • Новое Лобби • Живой Ангар Магазина • Оптимизация FPS & Пинга • Лидерборд без ботов • Церемония MVP'
+                  : 'New Menu • New Lobby • Live Hangar Shop • FPS & Ping Optimization • Bot-Free Leaderboard • MVP Podium'}
               </p>
             </div>
           </div>
@@ -120,6 +121,18 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
         {/* Navigation Tabs */}
         <div className="flex items-center space-x-1 px-3 sm:px-6 py-2 border-b border-slate-800 bg-slate-950/40 overflow-x-auto no-scrollbar">
           <button
+            onClick={() => setActiveTab('overview_09')}
+            className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
+              activeTab === 'overview_09'
+                ? 'bg-gradient-to-r from-cyan-500/30 to-pink-500/30 text-cyan-300 border border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.4)]'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+            <span>{isRu ? '✨ Обзор 0.9 Remake' : '✨ Overview 0.9 Remake'}</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('overview_08')}
             className={`px-3 py-1.5 rounded-lg font-orbitron font-bold text-xs tracking-wide whitespace-nowrap transition-all cursor-pointer flex items-center space-x-1.5 ${
               activeTab === 'overview_08'
@@ -128,7 +141,7 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
             }`}
           >
             <Flame className="w-3.5 h-3.5 text-pink-400" />
-            <span>{isRu ? '🔥 Обзор Beta 0.8' : '🔥 Overview Beta 0.8'}</span>
+            <span>{isRu ? '🔥 Архив Beta 0.8' : '🔥 Archive Beta 0.8'}</span>
           </button>
 
           <button
@@ -230,6 +243,123 @@ export const WhatsNewModal: React.FC<WhatsNewModalProps> = ({ lang, onClose, onT
 
         {/* Tab Content Body */}
         <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-4 text-slate-200">
+          {/* TAB: OVERVIEW 0.9 - REMAKE */}
+          {activeTab === 'overview_09' && (
+            <div className="space-y-4">
+              {/* Hero Banner */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-cyan-950 via-purple-950/80 to-pink-950 border border-cyan-400/60 shadow-[0_0_35px_rgba(6,182,212,0.3)] relative overflow-hidden">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-5 h-5 text-pink-400 animate-spin" style={{ animationDuration: '6s' }} />
+                  <h3 className="text-base sm:text-2xl font-orbitron font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-pink-300 to-amber-300">
+                    {isRu ? 'BETA 0.9 — REMAKE UPDATE' : 'BETA 0.9 — REMAKE UPDATE'}
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-pink-500/30 text-pink-200 border border-pink-400/50">
+                    {isRu ? 'НОВЫЙ РЕЛИЗ' : 'LATEST RELEASE'}
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-slate-200 leading-relaxed max-w-3xl">
+                  {isRu
+                    ? 'Глобальный ремейк интерфейса и соревновательного ядра CyberArena! Мы полностью заменили устаревшее меню и лобби, внедрили живой интерактивный ангар в магазине с примеркой кастомизации на корабль, оптимизировали FPS и сетевой пинг, очистили таблицу лидеров от ботов, убрали мешающие подсказки во время игры и добавили почётную церемонию финала с MVP по K/D!'
+                    : 'The comprehensive remake of CyberArena interface and competitive core! We redesigned the entire main menu and lobby, introduced a live interactive ship hangar preview in the shop, turbocharged FPS & latency, purged fake bots from leaderboards, uncluttered the in-game display, and inaugurated the match honors podium with K/D MVP!'}
+                </p>
+              </div>
+
+              {/* 7 Key Remake Highlights */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {/* 1. New Main Menu */}
+                <div className="p-4 rounded-xl bg-slate-950/70 border border-cyan-500/40 hover:border-cyan-400 transition-colors shadow-sm">
+                  <div className="flex items-center gap-2 text-cyan-300 font-orbitron font-bold text-sm mb-1.5">
+                    <span className="text-lg">🕹️</span>
+                    <span>{isRu ? '1. Новое Главное Меню' : '1. New Main Menu'}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                    {isRu
+                      ? 'Полная замена всех устаревших кнопок и макета. Современный кибер-интерфейс, комфортный для мобильных телефонов и компьютеров: быстрый запуск соло, создание комнат, удобный ввод кода и нижняя панель быстрого доступа.'
+                      : 'Complete replacement of all legacy buttons and layouts. Futuristic, highly ergonomic UI optimized for phones and desktops with 1-click solo play, room hosting, and quick navigation.'}
+                  </p>
+                </div>
+
+                {/* 2. New Lobby & Exit Button */}
+                <div className="p-4 rounded-xl bg-slate-950/70 border border-purple-500/40 hover:border-purple-400 transition-colors shadow-sm">
+                  <div className="flex items-center gap-2 text-purple-300 font-orbitron font-bold text-sm mb-1.5">
+                    <span className="text-lg">🚪</span>
+                    <span>{isRu ? '2. Новое Лобби и Кнопка Выхода' : '2. Redesigned Lobby & Exit Button'}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                    {isRu
+                      ? 'Полностью переработанное лобби со слотами игроков, выбором оружия и карт. Добавлена заметная и удобная кнопка «ВЫЙТИ ИЗ ЛОББИ» на мобилках и ПК, позволяющая вернуться в меню в любой момент.'
+                      : 'Revamped lobby with sleek player cards, weapon/map selectors, and an explicit, high-visibility "LEAVE LOBBY" button on mobile and desktop.'}
+                  </p>
+                </div>
+
+                {/* 3. New Live Hangar Shop */}
+                <div className="p-4 rounded-xl bg-slate-950/70 border border-amber-500/40 hover:border-amber-400 transition-colors shadow-sm">
+                  <div className="flex items-center gap-2 text-amber-300 font-orbitron font-bold text-sm mb-1.5">
+                    <span className="text-lg">🛍️</span>
+                    <span>{isRu ? '3. Магазин с Живой Примеркой на Корабле' : '3. Live Ship Preview Shop'}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                    {isRu
+                      ? 'Интерактивный 2D Canvas ангар: ваш корабль плавает на посадочной платформе! Клик по любому товару (корпус, шлем, крылья, след двигателя) моментально примеряет его на модель корабля в реальном времени до покупки.'
+                      : 'Interactive 2D Canvas hangar: your vessel hovers above the platform! Clicking any cosmetic (hull, helmet, wing accessories, thruster trails) instantly renders on your ship in real time.'}
+                  </p>
+                </div>
+
+                {/* 4. FPS & Ping Optimization */}
+                <div className="p-4 rounded-xl bg-slate-950/70 border border-emerald-500/40 hover:border-emerald-400 transition-colors shadow-sm">
+                  <div className="flex items-center gap-2 text-emerald-300 font-orbitron font-bold text-sm mb-1.5">
+                    <span className="text-lg">⚡</span>
+                    <span>{isRu ? '4. Оптимизация FPS и Пинга' : '4. FPS & Ping Turbo Optimization'}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                    {isRu
+                      ? 'Повышенная частота кадров (до 120 FPS), оптимизация отрисовки частиц и пуль, адаптивный DPR для слабых устройств и мгновенная отправка пакетов управления без задержек ввода (0ms input lag).'
+                      : 'Higher frame rates (up to 120 FPS), particle & projectile rendering optimization, adaptive DPR for budget devices, and zero-delay instantaneous input packet dispatch.'}
+                  </p>
+                </div>
+
+                {/* 5. 100% Real Pilots Leaderboard */}
+                <div className="p-4 rounded-xl bg-slate-950/70 border border-pink-500/40 hover:border-pink-400 transition-colors shadow-sm">
+                  <div className="flex items-center gap-2 text-pink-300 font-orbitron font-bold text-sm mb-1.5">
+                    <span className="text-lg">🏆</span>
+                    <span>{isRu ? '5. Чистая Таблица Лидеров (Без Ботов)' : '5. Pure Real-Pilots Leaderboard'}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                    {isRu
+                      ? 'Все выдуманные боты (Apex_Viper, Cyber_Phantom и др.) полностью исключены из Зала Славы! Теперь в таблице лидеров отображаются исключительно настоящие зарегистрированные пилоты. Добавлен поиск по нику.'
+                      : 'All fabricated bot accounts have been permanently purged! The Hall of Fame now exclusively showcases verified real pilots. Added callsign search and rank tier badges.'}
+                  </p>
+                </div>
+
+                {/* 6. Uncluttered Combat HUD */}
+                <div className="p-4 rounded-xl bg-slate-950/70 border border-blue-500/40 hover:border-blue-400 transition-colors shadow-sm">
+                  <div className="flex items-center gap-2 text-blue-300 font-orbitron font-bold text-sm mb-1.5">
+                    <span className="text-lg">🚫</span>
+                    <span>{isRu ? '6. Убрана Тактика и Подсказки Карт' : '6. Uncluttered Combat Screen'}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                    {isRu
+                      ? 'Удалены огромные баннеры тактических брифингов и подсказки карт, которые занимали экран в начале боя и мешали обзору. Теперь обзор открыт с первой же миллисекунды боя!'
+                      : 'Removed intrusive tactical briefing banners and map tips that obscured the viewport during combat. The gameplay view is pristine and open from the first millisecond.'}
+                  </p>
+                </div>
+
+                {/* 7. Match Honors Podium (MVP by K/D) */}
+                <div className="p-4 rounded-xl bg-gradient-to-r from-amber-950/60 to-purple-950/60 border border-amber-500/50 md:col-span-2 shadow-md">
+                  <div className="flex items-center gap-2 text-amber-300 font-orbitron font-bold text-sm mb-1.5">
+                    <span className="text-lg">🎖️</span>
+                    <span>{isRu ? '7. Церемония Финала: Аватары MVP, Точности и Урона' : '7. Match Honors: MVP, Accuracy & Damage Avatars'}</span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-sans leading-relaxed">
+                    {isRu
+                      ? 'После завершения каждого матча открывается новая трибуна почёта: аватар и карточка MVP (пилот с самым лучшим соотношением K/D среди всех участников), аватар пилота с наибольшей точностью попаданий и аватар разрушителя с максимальным уроном!'
+                      : 'Every match conclusion now presents a dedicated honors podium showcasing the MVP avatar (pilot with the highest K/D ratio among all players), the top accuracy sniper avatar, and the top damage dealer avatar!'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB: OVERVIEW 0.8 */}
           {activeTab === 'overview_08' && (
             <div className="space-y-4">

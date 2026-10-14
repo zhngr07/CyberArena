@@ -5,7 +5,7 @@ export const TRANSLATIONS = {
     // Header & Meta
     brandTitle: 'CYBER',
     brandSub: 'ARENA',
-    tagline: 'МУЛЬТИПЛЕЕР 2D PvP АРЕНА — BETA 0.8: COMBAT REBALANCE & ARENA EVOLUTION',
+    tagline: 'МУЛЬТИПЛЕЕР 2D PvP АРЕНА — BETA 0.9: REMAKE UPDATE',
     latency: 'ПИНГ',
     sound: 'ЗВУК',
     help: 'КАК ИГРАТЬ С ДРУГОМ?',
@@ -13,10 +13,10 @@ export const TRANSLATIONS = {
     coins: 'МОНЕТЫ',
 
     // Main Menu
-    badgeHero: 'BETA 0.8 — COMBAT REBALANCE & ARENA EVOLUTION',
-    whatsNewBtn: 'ЧТО НОВОГО? • BETA 0.8',
-    whatsNewSub: 'Удаление казуальных модификаторов, 5 новых тактических арен, ребаланс оружия и честный скилловый бой!',
-    whatsNewBadge: 'BETA 0.8',
+    badgeHero: 'BETA 0.9 — REMAKE UPDATE',
+    whatsNewBtn: 'ЧТО НОВОГО? • BETA 0.9',
+    whatsNewSub: 'Новое главное меню, новое лобби, интерактивный магазин с примеркой, оптимизация FPS/пинга, честный лидерборд и церемония MVP!',
+    whatsNewBadge: 'BETA 0.9',
     menuHeroDesc: 'Сражайся на арене с друзьями, собирай билды модулей, участвуй в космических событиях и побеждай гигантских боссов!',
     callsignLabel: 'ПОЗЫВНОЙ ВОИНА (НИКНЕЙМ)',
     callsignPlaceholder: 'Введи свой ник...',
@@ -259,7 +259,7 @@ export const TRANSLATIONS = {
     // Header & Meta
     brandTitle: 'CYBER',
     brandSub: 'ARENA',
-    tagline: 'MULTIPLAYER 2D PvP ARENA — BETA 0.8: COMBAT REBALANCE & ARENA EVOLUTION',
+    tagline: 'MULTIPLAYER 2D PvP ARENA — BETA 0.9: REMAKE UPDATE',
     latency: 'PING',
     sound: 'SOUND',
     help: 'HOW TO PLAY WITH A FRIEND?',
@@ -267,10 +267,10 @@ export const TRANSLATIONS = {
     coins: 'COINS',
 
     // Main Menu
-    badgeHero: 'BETA 0.8 — COMBAT REBALANCE & ARENA EVOLUTION',
-    whatsNewBtn: "WHAT'S NEW? • BETA 0.8",
-    whatsNewSub: 'Casual Modifiers Removed, 5 Brand-New Tactical Arenas, Weapon Rebalance & Pure Skill-Based Combat!',
-    whatsNewBadge: 'UPDATE 0.8',
+    badgeHero: 'BETA 0.9 — REMAKE UPDATE',
+    whatsNewBtn: "WHAT'S NEW? • BETA 0.9",
+    whatsNewSub: 'New Main Menu, Redesigned Lobby, Live Ship Preview Shop, FPS & Ping Optimization, Fair Leaderboard & MVP Awards!',
+    whatsNewBadge: 'BETA 0.9',
     menuHeroDesc: 'Battle friends in the arena, customize modular builds, survive dynamic space events, and claim bounties!',
     callsignLabel: 'PILOT CALLSIGN',
     callsignPlaceholder: 'Enter callsign...',

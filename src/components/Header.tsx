@@ -78,9 +78,9 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenWhatsNew}
               className="text-[9px] sm:text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 font-bold hidden xs:inline cursor-pointer transition-all transform hover:scale-105"
-              title={lang === 'ru' ? 'Что нового? (Beta 0.8: Combat Rebalance & Arena Evolution)' : "What's new? (Beta 0.8: Combat Rebalance & Arena Evolution)"}
+              title={lang === 'ru' ? 'Что нового? (Beta 0.9 - Remake)' : "What's new? (Beta 0.9 - Remake)"}
             >
-              v0.8
+              Beta 0.9
             </button>
           </div>
           <p className="text-[9px] uppercase font-mono tracking-widest text-cyan-400/70 hidden md:block">

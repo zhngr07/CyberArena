@@ -399,7 +399,7 @@ export class UserManager {
   public getPilotGlobalRank(username: string): number | null {
     if (!username) return null;
     const key = username.trim().toLowerCase();
-    const all = Array.from(this.users.values());
+    const all = Array.from(this.users.values()).filter((u) => !u.id.startsWith('legend_'));
     all.sort((a, b) => b.rating - a.rating || b.wins - a.wins || b.kills - a.kills || a.createdAt - b.createdAt);
     const index = all.findIndex((u) => u.username.toLowerCase() === key);
     return index >= 0 ? index + 1 : null;
@@ -410,7 +410,7 @@ export class UserManager {
     const limit = Math.max(1, Math.min(100, options?.limit || 20));
     const search = options?.search ? options.search.trim().toLowerCase() : '';
 
-    const all = Array.from(this.users.values());
+    const all = Array.from(this.users.values()).filter((u) => !u.id.startsWith('legend_'));
     all.sort((a, b) => b.rating - a.rating || b.wins - a.wins || b.kills - a.kills || a.createdAt - b.createdAt);
 
     // Compute absolute global rank for every user

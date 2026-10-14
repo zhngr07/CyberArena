@@ -65,6 +65,50 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
   const damageDealt = localParticipant?.damageDealt ?? localScoreSummary?.damageDealt ?? 0;
   const accuracy = localParticipant?.accuracy ?? localScoreSummary?.accuracy ?? 0;
 
+  // 1. MVP: Player with best K/D ratio among all players
+  const mvpPlayer: PlayerScoreSummary = React.useMemo(() => {
+    if (!scores || scores.length === 0) return winner;
+    const sorted = [...scores].sort((a, b) => {
+      const aKills = a.kills || 0;
+      const aDeaths = a.deaths || 0;
+      const bKills = b.kills || 0;
+      const bDeaths = b.deaths || 0;
+      const aKd = aDeaths === 0 ? aKills * 10 : aKills / aDeaths;
+      const bKd = bDeaths === 0 ? bKills * 10 : bKills / bDeaths;
+      if (bKd !== aKd) return bKd - aKd;
+      return (b.kills || 0) - (a.kills || 0) || b.score - a.score;
+    });
+    return sorted[0] || winner;
+  }, [scores, winner]);
+
+  // 2. High Accuracy Player
+  const highAccPlayer: PlayerScoreSummary = React.useMemo(() => {
+    if (!scores || scores.length === 0) return winner;
+    const sorted = [...scores].sort((a, b) => {
+      const aPart = matchResult?.participants.find((p) => p.id === a.id);
+      const bPart = matchResult?.participants.find((p) => p.id === b.id);
+      const aAcc = aPart?.accuracy ?? a.accuracy ?? 0;
+      const bAcc = bPart?.accuracy ?? b.accuracy ?? 0;
+      if (bAcc !== aAcc) return bAcc - aAcc;
+      return b.score - a.score;
+    });
+    return sorted[0] || winner;
+  }, [scores, winner, matchResult]);
+
+  // 3. High Damage Player
+  const highDmgPlayer: PlayerScoreSummary = React.useMemo(() => {
+    if (!scores || scores.length === 0) return winner;
+    const sorted = [...scores].sort((a, b) => {
+      const aPart = matchResult?.participants.find((p) => p.id === a.id);
+      const bPart = matchResult?.participants.find((p) => p.id === b.id);
+      const aDmg = aPart?.damageDealt ?? a.damageDealt ?? 0;
+      const bDmg = bPart?.damageDealt ?? b.damageDealt ?? 0;
+      if (bDmg !== aDmg) return bDmg - aDmg;
+      return b.score - a.score;
+    });
+    return sorted[0] || winner;
+  }, [scores, winner, matchResult]);
+
   useEffect(() => {
     // 1. Calculate coins reward
     let coinsReward = 30; // Base participation reward
@@ -218,8 +262,167 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           </div>
         </div>
 
+        {/* 0.9 Beta Remake: Match Honors Podium — MVP (best K/D), Highest Accuracy, Highest Damage */}
+        <div className="px-4 sm:px-6 py-3.5 bg-slate-950/70 border-b border-cyan-500/20">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-orbitron font-bold text-cyan-400 tracking-wider uppercase flex items-center gap-1.5">
+              <Trophy className="w-3.5 h-3.5 text-amber-400" />
+              <span>{lang === 'ru' ? 'ТРИБУНА ПОЧЁТА МАТЧА (MATCH HONORS)' : 'MATCH HONORS PODIUM'}</span>
+            </span>
+            <span className="text-[10px] font-mono text-slate-400">
+              {lang === 'ru' ? 'Лучшие пилоты сектора' : 'Sector Top Performers'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {/* 1. MVP CARD (Best K/D) */}
+            <div className="p-3 rounded-xl bg-gradient-to-b from-amber-950/60 to-slate-900 border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)] flex items-center space-x-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 px-2 py-0.5 rounded-bl-lg bg-amber-500 text-slate-950 text-[9px] font-orbitron font-black tracking-wider uppercase">
+                MVP 👑
+              </div>
+              {/* Ship Avatar */}
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center border shadow-md relative shrink-0"
+                style={{
+                  backgroundColor: `${mvpPlayer.color || '#f59e0b'}20`,
+                  borderColor: mvpPlayer.color || '#f59e0b',
+                  boxShadow: `0 0 12px ${mvpPlayer.color || '#f59e0b'}40`,
+                }}
+              >
+                <svg viewBox="0 0 40 40" className="w-8 h-8 drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]">
+                  <polygon
+                    points="20,4 34,32 20,26 6,32"
+                    fill={mvpPlayer.color || '#f59e0b'}
+                    stroke="#ffffff"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                  <circle cx="20" cy="18" r="3.5" fill="#ffffff" />
+                </svg>
+                {mvpPlayer.cosmetics?.hat && mvpPlayer.cosmetics.hat !== 'none' && (
+                  <span className="absolute -top-1.5 -right-1 text-xs">
+                    {mvpPlayer.cosmetics.hat === 'crown' ? '👑' : mvpPlayer.cosmetics.hat === 'horns' ? '😈' : mvpPlayer.cosmetics.hat === 'halo' ? '😇' : mvpPlayer.cosmetics.hat === 'visor' ? '🕶️' : '🧢'}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider">
+                  {lang === 'ru' ? 'ЛУЧШИЙ K/D (MVP)' : 'TOP K/D (MVP)'}
+                </div>
+                <div className="font-orbitron font-black text-xs sm:text-sm text-white truncate flex items-center gap-1.5">
+                  <span>{mvpPlayer.name}</span>
+                  {mvpPlayer.id === localPlayerId && (
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-600 font-mono">
+                      ВЫ
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] font-mono text-amber-300 font-bold mt-0.5">
+                  K/D: {mvpPlayer.deaths === 0 ? mvpPlayer.kills : (mvpPlayer.kills / mvpPlayer.deaths).toFixed(2)} ({mvpPlayer.kills}K / {mvpPlayer.deaths}D)
+                </div>
+              </div>
+            </div>
+
+            {/* 2. ACCURACY CARD */}
+            <div className="p-3 rounded-xl bg-gradient-to-b from-purple-950/60 to-slate-900 border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.2)] flex items-center space-x-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 px-2 py-0.5 rounded-bl-lg bg-purple-500 text-white text-[9px] font-orbitron font-black tracking-wider uppercase">
+                SNIPER 🎯
+              </div>
+              {/* Ship Avatar */}
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center border shadow-md relative shrink-0"
+                style={{
+                  backgroundColor: `${highAccPlayer.color || '#a855f7'}20`,
+                  borderColor: highAccPlayer.color || '#a855f7',
+                  boxShadow: `0 0 12px ${highAccPlayer.color || '#a855f7'}40`,
+                }}
+              >
+                <svg viewBox="0 0 40 40" className="w-8 h-8 drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]">
+                  <polygon
+                    points="20,4 32,18 36,36 20,30 4,36 8,18"
+                    fill={highAccPlayer.color || '#a855f7'}
+                    stroke="#ffffff"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                  <circle cx="20" cy="18" r="3.5" fill="#ffffff" />
+                </svg>
+                {highAccPlayer.cosmetics?.hat && highAccPlayer.cosmetics.hat !== 'none' && (
+                  <span className="absolute -top-1.5 -right-1 text-xs">
+                    {highAccPlayer.cosmetics.hat === 'crown' ? '👑' : highAccPlayer.cosmetics.hat === 'horns' ? '😈' : highAccPlayer.cosmetics.hat === 'halo' ? '😇' : highAccPlayer.cosmetics.hat === 'visor' ? '🕶️' : '🧢'}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider">
+                  {lang === 'ru' ? 'ТОЧНОСТЬ СТРЕЛЬБЫ' : 'TOP ACCURACY'}
+                </div>
+                <div className="font-orbitron font-black text-xs sm:text-sm text-white truncate flex items-center gap-1.5">
+                  <span>{highAccPlayer.name}</span>
+                  {highAccPlayer.id === localPlayerId && (
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-600 font-mono">
+                      ВЫ
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] font-mono text-purple-300 font-bold mt-0.5">
+                  {highAccPlayer.accuracy || 0}% {lang === 'ru' ? 'попаданий' : 'accuracy'}
+                </div>
+              </div>
+            </div>
+
+            {/* 3. HIGH DAMAGE CARD */}
+            <div className="p-3 rounded-xl bg-gradient-to-b from-rose-950/60 to-slate-900 border border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)] flex items-center space-x-3 relative overflow-hidden">
+              <div className="absolute top-0 right-0 px-2 py-0.5 rounded-bl-lg bg-rose-500 text-white text-[9px] font-orbitron font-black tracking-wider uppercase">
+                DAMAGE 💥
+              </div>
+              {/* Ship Avatar */}
+              <div
+                className="w-12 h-12 rounded-xl flex items-center justify-center border shadow-md relative shrink-0"
+                style={{
+                  backgroundColor: `${highDmgPlayer.color || '#f43f5e'}20`,
+                  borderColor: highDmgPlayer.color || '#f43f5e',
+                  boxShadow: `0 0 12px ${highDmgPlayer.color || '#f43f5e'}40`,
+                }}
+              >
+                <svg viewBox="0 0 40 40" className="w-8 h-8 drop-shadow-[0_0_6px_rgba(255,255,255,0.4)]">
+                  <polygon
+                    points="20,6 36,16 32,34 20,28 8,34 4,16"
+                    fill={highDmgPlayer.color || '#f43f5e'}
+                    stroke="#ffffff"
+                    strokeWidth="1.5"
+                    strokeLinejoin="round"
+                  />
+                  <circle cx="20" cy="18" r="3.5" fill="#ffffff" />
+                </svg>
+                {highDmgPlayer.cosmetics?.hat && highDmgPlayer.cosmetics.hat !== 'none' && (
+                  <span className="absolute -top-1.5 -right-1 text-xs">
+                    {highDmgPlayer.cosmetics.hat === 'crown' ? '👑' : highDmgPlayer.cosmetics.hat === 'horns' ? '😈' : highDmgPlayer.cosmetics.hat === 'halo' ? '😇' : highDmgPlayer.cosmetics.hat === 'visor' ? '🕶️' : '🧢'}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-mono text-rose-400 font-bold uppercase tracking-wider">
+                  {lang === 'ru' ? 'МАКСИМАЛЬНЫЙ УРОН' : 'MOST DAMAGE'}
+                </div>
+                <div className="font-orbitron font-black text-xs sm:text-sm text-white truncate flex items-center gap-1.5">
+                  <span>{highDmgPlayer.name}</span>
+                  {highDmgPlayer.id === localPlayerId && (
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-600 font-mono">
+                      ВЫ
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] font-mono text-rose-300 font-bold mt-0.5">
+                  {highDmgPlayer.damageDealt || 0} HP {lang === 'ru' ? 'урона' : 'damage'}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Personal Combat Highlights Cards */}
-        <div className="px-4 sm:px-6 pt-4 pb-2 bg-slate-950/40 border-b border-slate-800/80">
+        <div className="px-4 sm:px-6 pt-3 pb-2 bg-slate-950/40 border-b border-slate-800/80">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <div className="bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl text-center">
               <div className="text-[10px] font-orbitron text-slate-400 uppercase">Очки</div>

@@ -181,8 +181,11 @@ if (data.success && data.user) {
     return null;
   }
 
-  public async getTopPilots(): Promise<PilotProfile[]> {
-    const res = await fetch(`${API_URL}/api/leaderboard/pilots`);
+  public async getTopPilots(search?: string): Promise<PilotProfile[]> {
+    const url = search
+      ? `${API_URL}/api/leaderboard/pilots?search=${encodeURIComponent(search.trim())}`
+      : `${API_URL}/api/leaderboard/pilots`;
+    const res = await fetch(url);
     if (!res.ok) {
       throw new Error(`Ошибка загрузки рейтинга (${res.status})`);
     }

@@ -167,8 +167,6 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   } = useDeviceOrientation();
 
   const [showMobileRadar, setShowMobileRadar] = useState(false);
-  const [showMapIntro, setShowMapIntro] = useState<boolean>(true);
-  const [showMapDetailsModal, setShowMapDetailsModal] = useState<boolean>(false);
   const [activeEvent, setActiveEvent] = useState<DynamicEventState | null>(null);
   const currentEventRef = useRef<DynamicEventState | null>(null);
 
@@ -183,12 +181,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
     };
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowMapIntro(false);
-    }, 7000);
-    return () => clearTimeout(timer);
-  }, []);
+
 
   // Mobile settings reference
   const mobileSettingsRef = useRef<MobileControlSettings>(mobileSettings);
@@ -2933,36 +2926,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             >
               {formatTime(timeRemaining)}
             </div>
-            <button
-              onClick={() => setShowMapDetailsModal(true)}
-              className="mt-1 px-3 py-1.5 rounded-xl bg-slate-950/90 hover:bg-slate-900/90 border border-cyan-500/50 hover:border-cyan-400 flex items-center gap-2 text-[11px] font-mono text-cyan-200 transition-all cursor-pointer shadow-lg group pointer-events-auto max-w-md"
-              title={lang === 'ru' ? 'Нажмите для просмотра особенностей карты' : 'Click to inspect arena tactical features'}
-            >
-              <span className={`w-2 h-2 rounded-full shrink-0 ${
-                map.theme === 'purple' ? 'bg-purple-400 shadow-[0_0_8px_#c084fc]' :
-                map.theme === 'amber' ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' :
-                map.theme === 'emerald' ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]' :
-                map.theme === 'blue' ? 'bg-blue-400 shadow-[0_0_8px_#3b82f6]' :
-                map.theme === 'violet' ? 'bg-fuchsia-400 shadow-[0_0_8px_#d946ef]' :
-                'bg-cyan-400 shadow-[0_0_8px_#06b6d4]'
-              } group-hover:scale-125 transition-transform`} />
-              <span className="font-orbitron font-bold text-white shrink-0">
-                {lang === 'ru' ? (map.nameRu || map.name) : (map.nameEn || map.name)}
-              </span>
-              <span className="text-slate-400 shrink-0">•</span>
-              <span className="text-[10px] text-cyan-300 font-sans truncate">
-                ⚡ {lang === 'ru' ? (map.gameplayFeatureRu || map.gameplayFeature) : (map.gameplayFeatureEn || map.gameplayFeature)}
-              </span>
-              <span className="text-[9px] font-mono text-cyan-400 px-1 py-0.2 rounded bg-cyan-950 border border-cyan-700/60 shrink-0">
-                ℹ️ {lang === 'ru' ? 'Инфо' : 'Info'}
-              </span>
-            </button>
-
             {/* DYNAMIC ARENA EVENT BANNER */}
             {activeEvent && (
               <div
-                onClick={() => setShowMapDetailsModal(true)}
-                className={`mt-1.5 px-3.5 py-1.5 rounded-xl border backdrop-blur-md shadow-xl flex items-center gap-2.5 transition-all cursor-pointer pointer-events-auto max-w-lg ${
+                className={`mt-1.5 px-3.5 py-1.5 rounded-xl border backdrop-blur-md shadow-xl flex items-center gap-2.5 transition-all pointer-events-auto max-w-lg ${
                   activeEvent.phase === 'warning'
                     ? 'bg-amber-950/85 border-amber-500/80 shadow-[0_0_20px_rgba(245,158,11,0.35)] animate-pulse'
                     : 'bg-gradient-to-r from-rose-950/90 via-slate-950/95 to-purple-950/90 border-rose-500/80 shadow-[0_0_25px_rgba(244,63,94,0.45)]'
@@ -3173,27 +3140,10 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 PTS: {localPlayer.score || 0}
               </span>
             )}
-            <button
-              onClick={() => setShowMapDetailsModal(true)}
-              className="mt-0.5 px-2 py-0.5 rounded-lg bg-slate-900/90 border border-cyan-500/40 text-[9px] font-mono text-cyan-200 flex items-center gap-1.5 cursor-pointer pointer-events-auto max-w-[170px]"
-            >
-              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                map.theme === 'purple' ? 'bg-purple-400' :
-                map.theme === 'amber' ? 'bg-amber-400' :
-                map.theme === 'emerald' ? 'bg-emerald-400' :
-                map.theme === 'blue' ? 'bg-blue-400' :
-                map.theme === 'violet' ? 'bg-fuchsia-400' :
-                'bg-cyan-400'
-              }`} />
-              <span className="truncate font-orbitron font-bold text-white text-[8px]">{lang === 'ru' ? (map.nameRu || map.name) : (map.nameEn || map.name)}</span>
-              <span className="text-[8px] text-cyan-400 shrink-0">⚡</span>
-            </button>
-
             {/* Mobile Dynamic Event Pill */}
             {activeEvent && (
-              <button
-                onClick={() => setShowMapDetailsModal(true)}
-                className={`mt-0.5 px-2 py-0.5 rounded-md border text-[8px] font-orbitron font-bold flex items-center gap-1 cursor-pointer pointer-events-auto ${
+              <div
+                className={`mt-0.5 px-2 py-0.5 rounded-md border text-[8px] font-orbitron font-bold flex items-center gap-1 pointer-events-auto ${
                   activeEvent.phase === 'warning'
                     ? 'bg-amber-950/90 border-amber-500 text-amber-300 animate-pulse'
                     : 'bg-rose-950/90 border-rose-500 text-rose-300'
@@ -3206,7 +3156,7 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 <span className="font-mono text-[7px] px-1 py-0.2 rounded bg-black/40">
                   {activeEvent.phase === 'warning' ? `${activeEvent.warningSecondsLeft}s` : `${activeEvent.activeSecondsLeft}s`}
                 </span>
-              </button>
+              </div>
             )}
           </div>
 
@@ -3397,168 +3347,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         </div>
       )}
 
-      {/* ARENA MATCH INTRO BRIEFING BANNER */}
-      {showMapIntro && (
-        <div className="fixed top-14 sm:top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-auto animate-in fade-in slide-in-from-top-4 duration-300 w-[90%] max-w-md">
-          <div className="bg-slate-950/95 backdrop-blur-md border border-cyan-500/60 rounded-2xl p-3 sm:p-4 shadow-[0_0_35px_rgba(6,182,212,0.35)] flex flex-col items-center text-center relative">
-            <button
-              onClick={() => setShowMapIntro(false)}
-              className="absolute top-2.5 right-2.5 text-slate-400 hover:text-white p-1 rounded-md text-xs cursor-pointer"
-              title="Закрыть"
-            >
-              ✕
-            </button>
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`w-2.5 h-2.5 rounded-full ${
-                map.theme === 'purple' ? 'bg-purple-400 shadow-[0_0_8px_#c084fc]' :
-                map.theme === 'amber' ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b]' :
-                map.theme === 'emerald' ? 'bg-emerald-400 shadow-[0_0_8px_#10b981]' :
-                map.theme === 'blue' ? 'bg-blue-400 shadow-[0_0_8px_#3b82f6]' :
-                map.theme === 'violet' ? 'bg-fuchsia-400 shadow-[0_0_8px_#d946ef]' :
-                'bg-cyan-400 shadow-[0_0_8px_#06b6d4]'
-              }`} />
-              <span className="text-[10px] font-orbitron font-bold text-cyan-400 uppercase tracking-widest">
-                {lang === 'ru' ? 'АРЕНА БОЯ' : 'ARENA DEPLOYMENT'}
-              </span>
-            </div>
-            <h3 className="font-orbitron font-black text-sm sm:text-base text-white tracking-wide">
-              {lang === 'ru' ? (map.nameRu || map.name) : (map.nameEn || map.name)}
-            </h3>
-            <p className="text-[11px] text-cyan-200 font-sans mt-1 leading-snug">
-              ⚡ {lang === 'ru' ? (map.gameplayFeatureRu || map.gameplayFeature) : (map.gameplayFeatureEn || map.gameplayFeature)}
-            </p>
-            <div className="flex items-center justify-center gap-2 text-[10px] font-mono text-slate-300 mt-2">
-              <span className="px-2 py-0.5 rounded bg-slate-900 border border-slate-700">
-                📐 {mapWidth}x{mapHeight}
-              </span>
-              <span className="px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-600/70 text-emerald-300 font-bold">
-                ⚔️ {lang === 'ru' ? (map.openCoverRatioRu || map.openCoverRatio || '68% Открыто') : (map.openCoverRatio || '68% Open')}
-              </span>
-              <button
-                onClick={() => { setShowMapIntro(false); setShowMapDetailsModal(true); }}
-                className="px-2 py-0.5 rounded bg-cyan-900/60 hover:bg-cyan-800/80 border border-cyan-500/70 text-cyan-200 cursor-pointer"
-              >
-                {lang === 'ru' ? 'Тактика ℹ️' : 'Tactics ℹ️'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* DETAILED ARENA TACTICAL BRIEFING MODAL */}
-      {showMapDetailsModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in pointer-events-auto">
-          <div className="bg-slate-950 border border-cyan-500/60 rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-[0_0_40px_rgba(6,182,212,0.3)] relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setShowMapDetailsModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg text-sm cursor-pointer"
-            >
-              ✕
-            </button>
-
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`w-3 h-3 rounded-full ${
-                map.theme === 'purple' ? 'bg-purple-400 shadow-[0_0_10px_#c084fc]' :
-                map.theme === 'amber' ? 'bg-amber-400 shadow-[0_0_10px_#f59e0b]' :
-                map.theme === 'emerald' ? 'bg-emerald-400 shadow-[0_0_10px_#10b981]' :
-                map.theme === 'blue' ? 'bg-blue-400 shadow-[0_0_10px_#3b82f6]' :
-                map.theme === 'violet' ? 'bg-fuchsia-400 shadow-[0_0_10px_#d946ef]' :
-                'bg-cyan-400 shadow-[0_0_10px_#06b6d4]'
-              }`} />
-              <span className="text-xs font-orbitron font-bold text-cyan-400 tracking-wider uppercase">
-                {lang === 'ru' ? 'Тактический брифинг карты' : 'Arena Tactical Briefing'}
-              </span>
-            </div>
-
-            <h2 className="text-lg sm:text-xl font-orbitron font-black text-white mb-1">
-              {lang === 'ru' ? (map.nameRu || map.name) : (map.nameEn || map.name)}
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-300 font-sans mb-3 leading-relaxed">
-              {lang === 'ru' ? (map.descriptionRu || map.description) : (map.descriptionEn || map.description)}
-            </p>
-
-            <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/40 mb-3">
-              <div className="text-[11px] font-orbitron font-bold text-cyan-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                <span>⚡</span> {lang === 'ru' ? 'Главная особенность:' : 'Core Feature:'}
-              </div>
-              <div className="text-xs text-cyan-100 font-sans leading-relaxed">
-                {lang === 'ru' ? (map.gameplayFeatureRu || map.gameplayFeature) : (map.gameplayFeatureEn || map.gameplayFeature)}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3 text-xs font-mono">
-              <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">{lang === 'ru' ? 'Размер' : 'Dimension'}</span>
-                <span className="font-bold text-white">{mapWidth}x{mapHeight} px</span>
-              </div>
-              <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
-                <span className="text-slate-400 block text-[10px]">{lang === 'ru' ? 'Укрытия' : 'Covers'}</span>
-                <span className="font-bold text-cyan-300">{(serverObstaclesRef.current?.length || map.obstacles?.length || 0)} {lang === 'ru' ? 'объектов' : 'objects'}</span>
-              </div>
-              <div className="p-2 rounded-lg bg-slate-900 border border-slate-800 col-span-2 sm:col-span-1">
-                <span className="text-slate-400 block text-[10px]">{lang === 'ru' ? 'Баланс' : 'Ratio'}</span>
-                <span className="font-bold text-emerald-400">
-                  {lang === 'ru' ? (map.openCoverRatioRu || map.openCoverRatio || '68% Открыто') : (map.openCoverRatio || '68% Open')}
-                </span>
-              </div>
-            </div>
-
-            {/* Arena Events List */}
-            {(() => {
-              const arenaEvents = MAP_SPECIFIC_EVENTS[map.id] || [];
-              if (arenaEvents.length === 0) return null;
-              return (
-                <div className="mb-4">
-                  <h4 className="text-xs font-orbitron font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <span>⚡</span> {lang === 'ru' ? 'События этой карты:' : 'Arena Dynamic Events:'}
-                  </h4>
-                  <div className="space-y-2">
-                    {arenaEvents.map((evtKey) => {
-                      const def = DYNAMIC_EVENTS[evtKey];
-                      if (!def) return null;
-                      return (
-                        <div key={evtKey} className="p-2 rounded-lg bg-slate-900/80 border border-slate-800 text-left">
-                          <div className="text-[11px] font-orbitron font-bold text-cyan-300 flex items-center justify-between">
-                            <span>{lang === 'ru' ? def.nameRu : def.name}</span>
-                            <span className="text-[9px] font-mono text-amber-400">{def.activeDuration}s</span>
-                          </div>
-                          <p className="text-[10px] text-slate-300 font-sans mt-0.5 leading-snug">
-                            {lang === 'ru' ? def.descriptionRu : def.description}
-                          </p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Tactical Advice list */}
-            {(map.keyTactics || PRESET_METADATA[map.id as ArenaPresetId]?.keyTactics) && (
-              <div className="mb-4">
-                <h4 className="text-xs font-orbitron font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  {lang === 'ru' ? 'Тактические советы для пилота:' : 'Pilot Tactical Advice:'}
-                </h4>
-                <ul className="space-y-1.5 text-xs text-slate-300 font-sans list-disc list-inside">
-                  {(lang === 'ru'
-                    ? (map.keyTacticsRu || PRESET_METADATA[map.id as ArenaPresetId]?.keyTacticsRu || map.keyTactics || [])
-                    : (map.keyTacticsEn || PRESET_METADATA[map.id as ArenaPresetId]?.keyTacticsEn || map.keyTactics || [])
-                  ).map((tac: string, i: number) => (
-                    <li key={i} className="leading-snug">{tac}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            <button
-              onClick={() => setShowMapDetailsModal(false)}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-orbitron font-bold text-xs tracking-wider cursor-pointer shadow-lg"
-            >
-              {lang === 'ru' ? 'ВЕРНУТЬСЯ В БОЙ' : 'RESUME COMBAT'}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* In 0.9 Beta Remake: map intro tactics & tips are removed from gameplay to keep screen uncluttered */}
     </div>
   );
 };
+

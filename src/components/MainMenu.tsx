@@ -15,6 +15,11 @@ import {
   User,
   Swords,
   Crown,
+  Play,
+  Zap,
+  Flame,
+  Globe,
+  Settings,
 } from 'lucide-react';
 import { soundManager } from '../services/audio.ts';
 import { Language, TRANSLATIONS } from '../data/translations.ts';
@@ -61,6 +66,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   playerColor,
   setPlayerColor,
   cosmetics,
+  coins,
   lang,
   currentUser,
   onCreateRoom,
@@ -84,7 +90,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
 
   const t = TRANSLATIONS[lang];
 
-  // Fetch open rooms with visibility check
+  // Fetch active public rooms
   const fetchRooms = async () => {
     setLoadingRooms(true);
     try {
@@ -137,76 +143,85 @@ export const MainMenu: React.FC<MainMenuProps> = ({
   };
 
   return (
-    <div className="w-full max-w-xl mx-auto px-3 py-2 sm:py-5 flex flex-col items-center justify-start select-none safe-pb safe-pl safe-pr min-h-full touch-pan-y pb-24">
-      {/* Title Hero - Compact & Balanced */}
-      <div className="text-center mb-3 sm:mb-4 relative">
-        <button
-          onClick={onOpenWhatsNew}
-          className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-pink-950/80 via-purple-950/80 to-cyan-950/80 hover:from-pink-900/90 hover:to-cyan-900/90 border border-pink-500/50 hover:border-pink-400 text-pink-300 text-[10px] sm:text-xs font-mono uppercase tracking-wider mb-2 shadow-[0_0_15px_rgba(236,72,153,0.3)] transition-all cursor-pointer transform hover:scale-105"
-          title={t.whatsNewBtn}
-        >
-          <Sparkles className="w-3.5 h-3.5 text-pink-400 animate-pulse" />
-          <span className="font-orbitron font-bold text-pink-200">{t.badgeHero}</span>
-          <span className="px-1.5 py-0.2 rounded bg-pink-500/30 text-white font-bold text-[9px] uppercase">
-            {t.whatsNewBadge}
-          </span>
-        </button>
-        <h2 className="text-2xl sm:text-4xl font-orbitron font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-br from-cyan-400 via-sky-300 to-pink-500 drop-shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+    <div className="w-full max-w-3xl mx-auto px-3 sm:px-4 py-2 sm:py-5 flex flex-col items-center justify-start select-none safe-pb safe-pl safe-pr min-h-full touch-pan-y pb-24">
+      {/* 0.9 REMAKE BANNER */}
+      <div className="w-full max-w-xl text-center mb-3 sm:mb-4">
+        {onOpenWhatsNew && (
+          <button
+            onClick={onOpenWhatsNew}
+            className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-gradient-to-r from-cyan-950 via-purple-950 to-pink-950 hover:from-cyan-900 hover:to-pink-900 border border-cyan-400/60 hover:border-pink-400 text-cyan-200 text-xs font-mono uppercase tracking-wider mb-2.5 shadow-[0_0_20px_rgba(6,182,212,0.35)] transition-all cursor-pointer transform hover:scale-105"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-pink-400 animate-spin" style={{ animationDuration: '6s' }} />
+            <span className="font-orbitron font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-pink-300 to-amber-300">
+              Beta 0.9 - Remake
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-pink-500/30 text-white font-bold text-[9px]">
+              НОВОЕ МЕНЮ & ЛОББИ
+            </span>
+          </button>
+        )}
+
+        <h2 className="text-3xl sm:text-5xl font-orbitron font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-br from-cyan-400 via-sky-300 to-pink-500 drop-shadow-[0_0_25px_rgba(6,182,212,0.5)]">
           CYBER<span className="text-pink-400">ARENA</span>
         </h2>
-        <p className="mt-1 text-slate-400 max-w-sm mx-auto text-[11px] sm:text-xs">
-          {t.menuHeroDesc}
+        <p className="mt-1 text-slate-400 text-xs sm:text-sm font-sans max-w-md mx-auto">
+          {lang === 'ru'
+            ? 'Топовый мультиплеерный кибер-шутер: PvP дуэли, боссы, ангар кастомизации'
+            : 'Top-down multiplayer cyber shooter: real-time PvP, epic boss raids, hangar customizer'}
         </p>
       </div>
 
-      {/* Pilot Account & Rank Status Card */}
-      <div className="w-full max-w-md mb-3 bg-gradient-to-r from-slate-900/90 via-slate-900/95 to-slate-900/90 border border-cyan-500/40 rounded-xl p-3 backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.15)] flex items-center justify-between gap-3">
+      {/* PILOT PROFILE BAR */}
+      <div className="w-full max-w-xl mb-3.5 bg-slate-900/90 border border-cyan-500/40 rounded-2xl p-3 sm:p-4 backdrop-blur-md shadow-[0_0_25px_rgba(6,182,212,0.15)] flex flex-col sm:flex-row items-center justify-between gap-3">
         {currentUser ? (
-          <div className="flex items-center space-x-3 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-400/50 flex items-center justify-center text-xl shrink-0">
+          <div className="flex items-center space-x-3.5 min-w-0 w-full sm:w-auto">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-400/60 flex items-center justify-center text-2xl shrink-0 shadow-inner">
               {currentUser.rankIcon || '💎'}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="font-orbitron font-bold text-xs sm:text-sm text-white truncate">
+              <div className="flex items-center gap-2">
+                <span className="font-orbitron font-black text-sm sm:text-base text-white truncate">
                   {currentUser.username}
                 </span>
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 border border-amber-400/40 text-amber-300 shrink-0">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 border border-amber-400/50 text-amber-300 shrink-0">
                   {currentUser.rankTitle}
                 </span>
               </div>
-              <div className="text-[10px] font-mono text-slate-400 flex items-center gap-2 mt-0.5">
+              <div className="text-[11px] font-mono text-slate-400 flex items-center gap-2 mt-0.5 flex-wrap">
                 <span className="text-cyan-300 font-bold">{currentUser.rating} RP</span>
                 <span>•</span>
-                <span>W/L: {currentUser.winRate}</span>
+                <span className="text-emerald-400">{currentUser.winRate} WR</span>
                 <span>•</span>
-                <span>K/D: {currentUser.kd}</span>
+                <span className="text-pink-400">{currentUser.kd} K/D</span>
+                <span>•</span>
+                <span className="text-amber-300 font-bold">{currentUser.coins || coins} 🪙</span>
               </div>
             </div>
           </div>
         ) : (
-          <div className="flex items-center space-x-2.5 min-w-0 flex-1">
-            <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 shrink-0">
-              <User className="w-4 h-4" />
+          <div className="flex items-center space-x-3 min-w-0 w-full sm:w-auto">
+            <div className="w-11 h-11 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 shrink-0">
+              <User className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <div className="font-orbitron font-bold text-xs text-slate-200">
+              <div className="font-orbitron font-bold text-xs sm:text-sm text-slate-200">
                 {lang === 'ru' ? 'Гостевой Пилот' : 'Guest Pilot'}
               </div>
               <div className="text-[10px] text-slate-400 font-sans">
-                {lang === 'ru' ? 'Войди, чтобы сохранять монеты и рейтинг' : 'Login to sync progress & MMR rating'}
+                {lang === 'ru' ? 'Войдите, чтобы сохранять рейтинг и монеты' : 'Login to save MMR & cosmetics'}
               </div>
             </div>
           </div>
         )}
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        {/* Profile Action Buttons */}
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
           {currentUser ? (
             <>
               {onOpenProfile && (
                 <button
                   onClick={onOpenProfile}
-                  className="px-2.5 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 text-xs font-orbitron font-bold transition-all cursor-pointer shadow-sm"
+                  className="px-3 py-1.5 rounded-xl bg-cyan-950 hover:bg-cyan-900 border border-cyan-500/50 text-cyan-300 text-xs font-orbitron font-bold transition-all cursor-pointer shadow-sm"
                 >
                   {t.profile || 'Профиль'}
                 </button>
@@ -214,10 +229,11 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               {onOpenLeaderboard && (
                 <button
                   onClick={onOpenLeaderboard}
-                  className="p-1.5 rounded-lg bg-amber-950/60 hover:bg-amber-900/70 border border-amber-500/40 text-amber-300 transition-all cursor-pointer"
-                  title={t.hallOfFame || 'Зал Славы'}
+                  className="px-3 py-1.5 rounded-xl bg-amber-950/70 hover:bg-amber-900/80 border border-amber-500/50 text-amber-300 text-xs font-orbitron font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(245,158,11,0.2)]"
+                  title="Таблица лидеров"
                 >
-                  <Trophy className="w-4 h-4" />
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{lang === 'ru' ? 'Топ' : 'Ranks'}</span>
                 </button>
               )}
             </>
@@ -226,7 +242,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               {onOpenAuth && (
                 <button
                   onClick={onOpenAuth}
-                  className="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-orbitron font-black transition-all cursor-pointer shadow-[0_0_10px_rgba(6,182,212,0.3)]"
+                  className="px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-orbitron font-black transition-all cursor-pointer shadow-[0_0_15px_rgba(6,182,212,0.4)]"
                 >
                   {t.login || 'Вход'}
                 </button>
@@ -234,8 +250,8 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               {onOpenLeaderboard && (
                 <button
                   onClick={onOpenLeaderboard}
-                  className="p-1.5 rounded-lg bg-amber-950/60 hover:bg-amber-900/70 border border-amber-500/40 text-amber-300 transition-all cursor-pointer"
-                  title={t.hallOfFame || 'Зал Славы'}
+                  className="p-2 rounded-xl bg-amber-950/70 hover:bg-amber-900/80 border border-amber-500/50 text-amber-300 transition-all cursor-pointer"
+                  title="Таблица лидеров"
                 >
                   <Trophy className="w-4 h-4" />
                 </button>
@@ -245,114 +261,58 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         </div>
       </div>
 
-      {/* Featured Update Tab: "Что нового?" */}
-      {onOpenWhatsNew && (
-        <button
-          onClick={onOpenWhatsNew}
-          className="w-full max-w-md mb-3 p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-pink-950/70 via-purple-950/60 to-cyan-950/70 hover:from-pink-900/80 hover:via-purple-900/70 hover:to-cyan-900/80 border border-pink-500/40 hover:border-pink-300 transition-all cursor-pointer shadow-[0_0_20px_rgba(236,72,153,0.25)] transform hover:-translate-y-0.5 group"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3 text-left">
-              <div className="w-9 h-9 rounded-lg bg-pink-500/20 border border-pink-400/60 flex items-center justify-center text-pink-300 group-hover:scale-110 transition-transform shadow-[0_0_12px_rgba(236,72,153,0.4)]">
-                <Sparkles className="w-5 h-5 animate-pulse" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-orbitron font-black text-xs sm:text-sm text-pink-300 group-hover:text-pink-200">
-                    {t.whatsNewBtn}
-                  </span>
-                  <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-pink-500/30 text-white border border-pink-400/50">
-                    {t.whatsNewBadge}
-                  </span>
-                </div>
-                <div className="text-[10px] text-slate-300 font-sans mt-0.5 line-clamp-1">
-                  {t.whatsNewSub}
-                </div>
-              </div>
-            </div>
-            <ArrowRight className="w-4 h-4 text-pink-400 group-hover:translate-x-1 transition-transform ml-2 shrink-0" />
-          </div>
-        </button>
-      )}
-
-      {/* Primary Top Row: How to play guide & Shop */}
-      <div className="w-full max-w-md mb-3 grid grid-cols-2 gap-2">
-        <button
-          onClick={onOpenHelp}
-          className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-r from-cyan-950/80 to-blue-950/80 hover:from-cyan-900/90 hover:to-blue-900/90 border border-cyan-400/50 hover:border-cyan-300 text-cyan-300 font-orbitron font-bold text-xs tracking-wide flex flex-col items-center justify-center text-center shadow-[0_0_12px_rgba(6,182,212,0.2)] transition-all cursor-pointer transform hover:-translate-y-0.5"
-        >
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <HelpCircle className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-[11px] sm:text-xs">{t.howToPlayWithFriendBtn}</span>
-          </div>
-          <span className="text-[9px] text-cyan-400/70 font-sans font-normal hidden sm:inline">
-            {t.howToPlaySub}
-          </span>
-        </button>
-
-        <button
-          onClick={onOpenShop}
-          className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-r from-amber-950/80 to-yellow-950/80 hover:from-amber-900/90 hover:to-yellow-900/90 border border-amber-400/50 hover:border-amber-300 text-amber-300 font-orbitron font-bold text-xs tracking-wide flex flex-col items-center justify-center text-center shadow-[0_0_12px_rgba(245,158,11,0.2)] transition-all cursor-pointer transform hover:-translate-y-0.5"
-        >
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <ShoppingBag className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-[11px] sm:text-xs">{t.openShopBtn}</span>
-          </div>
-          <span className="text-[9px] text-amber-400/70 font-sans font-normal hidden sm:inline">
-            {t.openShopSub}
-          </span>
-        </button>
-      </div>
-
-      {/* Error notification */}
+      {/* ERROR NOTICE */}
       {errorMessage && (
-        <div className="w-full max-w-md mb-3 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 text-xs text-center font-mono">
-          {errorMessage}
+        <div className="w-full max-w-xl mb-3 p-3 rounded-xl bg-rose-500/20 border border-rose-500/50 text-rose-300 text-xs text-center font-mono">
+          ⚠️ {errorMessage}
         </div>
       )}
 
-      {/* Warrior Customization Card - Compact */}
-      <div className="w-full max-w-md bg-slate-900/90 border border-cyan-500/30 rounded-xl p-3 sm:p-4 mb-3 backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.12)]">
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="text-[10px] uppercase font-orbitron text-cyan-400 font-bold">
+      {/* PILOT CALLSIGN & SHIP CUSTOMIZER CARD */}
+      <div className="w-full max-w-xl bg-slate-900/90 border border-cyan-500/30 rounded-2xl p-3.5 sm:p-4 mb-3.5 backdrop-blur-md shadow-[0_0_20px_rgba(6,182,212,0.12)]">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-[11px] uppercase font-orbitron text-cyan-400 font-bold">
             {t.callsignLabel}
           </label>
-          <div className="flex items-center space-x-1.5 text-[10px] font-mono text-slate-400">
+          <button
+            onClick={onOpenShop}
+            className="text-[10px] font-mono text-amber-300 hover:text-amber-200 flex items-center gap-1 cursor-pointer transition-colors"
+          >
             <span>{t.equippedStyle}</span>
             <span className="text-cyan-300 uppercase font-bold">{cosmetics.shipModel}</span>
             <span>•</span>
-            <span className="text-pink-300 capitalize">{cosmetics.trail}</span>
-          </div>
+            <span className="text-amber-400 underline">{lang === 'ru' ? 'Изменить в ангаре ➔' : 'Change in Hangar ➔'}</span>
+          </button>
         </div>
 
-        <div className="flex items-center space-x-2.5 mb-2.5">
+        <div className="flex items-center space-x-2.5 mb-3">
           <input
             type="text"
             value={playerName}
             maxLength={16}
             onChange={(e) => setPlayerName(e.target.value)}
             placeholder={t.callsignPlaceholder}
-            className="flex-1 bg-slate-950/80 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 rounded-lg px-3 py-1.5 text-slate-100 font-orbitron text-xs sm:text-sm outline-none transition-all placeholder:text-slate-600"
+            className="flex-1 bg-slate-950/90 border border-slate-700 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 rounded-xl px-3.5 py-2 text-slate-100 font-orbitron text-xs sm:text-sm outline-none transition-all placeholder:text-slate-600 shadow-inner"
           />
           {/* Avatar / Hull Preview */}
           <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center border-2 border-slate-700 shadow-md relative group cursor-pointer"
+            className="w-10 h-10 rounded-xl flex items-center justify-center border-2 border-slate-700 shadow-md relative group cursor-pointer shrink-0 transition-transform hover:scale-105"
             style={{ backgroundColor: playerColor }}
             onClick={onOpenShop}
-            title={t.openShopBtn}
+            title={lang === 'ru' ? 'Открыть магазин и примерить обвесы' : 'Open shop and try items'}
           >
             <div className="w-2 h-2 rounded-full bg-white/90 animate-ping" />
             {cosmetics.hat !== 'none' && (
-              <span className="absolute -top-2 -right-1 text-[11px]">
-                {cosmetics.hat === 'crown' ? '👑' : cosmetics.hat === 'visor' ? '🕶️' : cosmetics.hat === 'horns' ? '😈' : cosmetics.hat === 'halo' ? '😇' : cosmetics.hat === 'samurai' ? '⚔️' : '🎧'}
+              <span className="absolute -top-2 -right-1 text-xs select-none">
+                {cosmetics.hat === 'crown' ? '👑' : cosmetics.hat === 'visor' ? '🕶️' : cosmetics.hat === 'horns' ? '😈' : cosmetics.hat === 'halo' ? '😇' : cosmetics.hat === 'samurai' ? '⚔️' : '🧢'}
               </span>
             )}
           </div>
         </div>
 
         {/* Color Palette */}
-        <div className="flex items-center justify-between gap-1.5 pt-0.5">
-          <span className="text-[9px] uppercase font-mono text-slate-400">
+        <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800">
+          <span className="text-[10px] uppercase font-mono text-slate-400">
             {t.colorSelect}
           </span>
           <div className="flex items-center space-x-2">
@@ -361,9 +321,9 @@ export const MainMenu: React.FC<MainMenuProps> = ({
                 key={c.hex}
                 type="button"
                 onClick={() => setPlayerColor(c.hex)}
-                className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg transition-all transform hover:scale-110 flex items-center justify-center cursor-pointer ${
+                className={`w-6 h-6 sm:w-7 sm:h-7 rounded-xl transition-all transform hover:scale-110 flex items-center justify-center cursor-pointer ${
                   playerColor === c.hex
-                    ? `scale-110 ring-2 ${c.ring} shadow-[0_0_10px_${c.hex}]`
+                    ? `scale-110 ring-2 ${c.ring} shadow-[0_0_12px_${c.hex}]`
                     : 'opacity-70 hover:opacity-100'
                 }`}
                 style={{ backgroundColor: c.hex }}
@@ -376,30 +336,32 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         </div>
       </div>
 
-      {/* Main Action Grid - Clear Titles & Helpful Descriptions */}
-      <div className="w-full max-w-md space-y-2 mb-3">
-        {/* 1. Create Room Button */}
+      {/* CORE ACTION LAUNCH MODES - 0.9 REMAKE REDESIGN */}
+      <div className="w-full max-w-xl space-y-2.5 mb-3.5">
+        {/* 1. Create Room Button (Primary Large Card) */}
         <button
           onClick={handleCreate}
           disabled={isConnecting}
-          className="w-full group px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-orbitron font-black text-xs sm:text-sm tracking-wide flex items-center justify-between shadow-[0_0_15px_rgba(6,182,212,0.35)] transition-all transform hover:-translate-y-0.5 cursor-pointer disabled:opacity-50"
+          className="w-full group p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-orbitron font-black text-sm sm:text-base tracking-wide flex items-center justify-between shadow-[0_0_25px_rgba(6,182,212,0.4)] transition-all transform hover:-translate-y-0.5 cursor-pointer disabled:opacity-50"
         >
-          <div className="flex items-center space-x-2.5 text-left">
-            <div className="w-7 h-7 rounded-lg bg-slate-950/20 flex items-center justify-center">
-              <PlusCircle className="w-4 h-4 text-slate-950" />
+          <div className="flex items-center space-x-3 text-left">
+            <div className="w-10 h-10 rounded-xl bg-slate-950/25 flex items-center justify-center">
+              <PlusCircle className="w-5 h-5 text-slate-950" />
             </div>
             <div>
-              <div className="leading-tight">{t.createRoomBtn}</div>
-              <div className="text-[9px] font-sans font-normal text-slate-900/80">
-                {t.createRoomSub}
+              <div className="leading-tight text-slate-950 font-black">
+                {t.createRoomBtn}
+              </div>
+              <div className="text-[10px] font-sans font-normal text-slate-900/80 mt-0.5">
+                {lang === 'ru' ? 'Создай своё лобби, выбери карту и позови друзей' : 'Host your private lobby, pick map and invite friends'}
               </div>
             </div>
           </div>
-          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+          <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
         </button>
 
-        {/* 2. Join by Code Form */}
-        <form onSubmit={handleJoinSubmit} className="flex gap-1.5">
+        {/* 2. Join by Code Input Form */}
+        <form onSubmit={handleJoinSubmit} className="flex gap-2">
           <div className="flex-1 relative">
             <input
               type="text"
@@ -407,38 +369,38 @@ export const MainMenu: React.FC<MainMenuProps> = ({
               onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
               maxLength={6}
               placeholder={t.joinRoomPlaceholder}
-              className="w-full bg-slate-900/90 border border-slate-700 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 rounded-xl px-3 py-2 text-pink-300 font-orbitron font-bold tracking-widest text-center text-xs sm:text-sm uppercase outline-none placeholder:text-slate-600 placeholder:tracking-normal placeholder:font-sans placeholder:text-[10px] sm:placeholder:text-xs"
+              className="w-full bg-slate-900/95 border border-slate-700 focus:border-pink-500 focus:ring-1 focus:ring-pink-500 rounded-2xl px-4 py-3 text-pink-300 font-orbitron font-bold tracking-widest text-center text-xs sm:text-sm uppercase outline-none placeholder:text-slate-500 placeholder:tracking-normal placeholder:font-sans"
             />
           </div>
           <button
             type="submit"
             disabled={!roomCodeInput.trim() || isConnecting}
-            className="px-4 py-2 rounded-xl bg-pink-600 hover:bg-pink-500 text-white font-orbitron font-bold text-xs tracking-wider flex items-center space-x-1.5 shadow-[0_0_12px_rgba(236,72,153,0.35)] transition-all cursor-pointer disabled:opacity-50"
+            className="px-6 py-3 rounded-2xl bg-pink-600 hover:bg-pink-500 text-white font-orbitron font-black text-xs sm:text-sm tracking-wider flex items-center space-x-1.5 shadow-[0_0_15px_rgba(236,72,153,0.4)] transition-all cursor-pointer disabled:opacity-50"
           >
-            <LogIn className="w-3.5 h-3.5" />
+            <LogIn className="w-4 h-4" />
             <span>{t.joinBtn}</span>
           </button>
         </form>
 
-        {/* 3. Practice Solo with Bots */}
+        {/* 3. Quick Play / Solo Practice with Bots */}
         <button
           onClick={handleQuick}
           disabled={isConnecting}
-          className="w-full px-4 py-2 rounded-xl bg-slate-900 border border-emerald-500/40 hover:border-emerald-400 hover:bg-emerald-950/20 text-emerald-400 font-orbitron font-bold text-xs tracking-wide flex items-center justify-between transition-all shadow-[0_0_12px_rgba(16,185,129,0.15)] cursor-pointer"
+          className="w-full p-3 rounded-2xl bg-slate-900 border border-emerald-500/40 hover:border-emerald-400 hover:bg-emerald-950/20 text-emerald-400 font-orbitron font-bold text-xs sm:text-sm tracking-wide flex items-center justify-between transition-all shadow-[0_0_15px_rgba(16,185,129,0.15)] cursor-pointer"
         >
-          <div className="flex items-center space-x-2.5 text-left">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+          <div className="flex items-center space-x-3 text-left">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-center">
               <Bot className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
-              <div className="leading-tight">{t.practiceBtn}</div>
-              <div className="text-[9px] font-sans font-normal text-emerald-400/70">
-                {t.practiceSub}
+              <div className="leading-tight text-white">{t.practiceBtn}</div>
+              <div className="text-[10px] font-sans font-normal text-emerald-400/80">
+                {lang === 'ru' ? 'Мгновенный бой без ожидания других игроков' : 'Instant combat against practice bots'}
               </div>
             </div>
           </div>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/30 text-emerald-300">
-            SOLO
+          <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg bg-emerald-950/80 border border-emerald-500/40 text-emerald-300 font-bold">
+            SOLO QUICK PLAY
           </span>
         </button>
 
@@ -453,19 +415,21 @@ export const MainMenu: React.FC<MainMenuProps> = ({
             }
           }}
           disabled={isConnecting}
-          className="w-full px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-950/90 via-pink-950/80 to-red-950/90 hover:from-purple-900/90 hover:to-red-900/90 border border-purple-500/50 hover:border-pink-400 text-pink-300 font-orbitron font-bold text-xs tracking-wide flex items-center justify-between transition-all shadow-[0_0_15px_rgba(236,72,153,0.25)] transform hover:-translate-y-0.5 cursor-pointer disabled:opacity-50"
+          className="w-full p-3 rounded-2xl bg-gradient-to-r from-purple-950/90 via-pink-950/80 to-red-950/90 hover:from-purple-900/90 hover:to-red-900/90 border border-purple-500/50 hover:border-pink-400 text-pink-300 font-orbitron font-bold text-xs sm:text-sm tracking-wide flex items-center justify-between transition-all shadow-[0_0_20px_rgba(236,72,153,0.3)] transform hover:-translate-y-0.5 cursor-pointer disabled:opacity-50"
         >
-          <div className="flex items-center space-x-2.5 text-left">
-            <div className="w-7 h-7 rounded-lg bg-pink-500/20 border border-pink-500/40 flex items-center justify-center text-sm shadow-[0_0_8px_rgba(236,72,153,0.3)]">
+          <div className="flex items-center space-x-3 text-left">
+            <div className="w-9 h-9 rounded-xl bg-pink-500/20 border border-pink-500/40 flex items-center justify-center text-base shadow-[0_0_10px_rgba(236,72,153,0.3)]">
               ⚔️
             </div>
             <div>
               <div className="leading-tight text-white flex items-center gap-1.5">
                 <span>{lang === 'ru' ? 'РЕЙД НА БОССА (КООП)' : 'BOSS RAID (CO-OP)'}</span>
-                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/30 text-rose-300 border border-rose-400/50">PvE</span>
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/30 text-rose-300 border border-rose-400/50">
+                  PvE TITAN
+                </span>
               </div>
-              <div className="text-[9px] font-sans font-normal text-pink-300/80">
-                {lang === 'ru' ? 'Все игроки против одного Титана на большой карте!' : 'All players vs 1 giant Titan boss on massive arena!'}
+              <div className="text-[10px] font-sans font-normal text-pink-300/80">
+                {lang === 'ru' ? 'Все пилоты против гигантского Титана на большой карте!' : 'All pilots unite against the colossal Titan on giant arena!'}
               </div>
             </div>
           </div>
@@ -473,75 +437,80 @@ export const MainMenu: React.FC<MainMenuProps> = ({
         </button>
       </div>
 
-      {/* Quick UI Scale Selector (Directly in Main Menu for convenience!) */}
-      {onUiScaleChange && (
-        <div className="w-full max-w-md flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-900/60 border border-slate-800/80 mb-3 text-[11px] font-mono text-slate-400">
-          <div className="flex items-center space-x-1.5 text-cyan-400">
-            <Sliders className="w-3 h-3" />
-            <span className="text-[10px] font-orbitron uppercase">{t.uiScale}:</span>
-          </div>
-          <div className="flex items-center space-x-1">
-            {[0.75, 0.85, 1.0].map((s) => (
-              <button
-                key={s}
-                onClick={() => onUiScaleChange(s)}
-                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
-                  Math.abs(uiScale - s) < 0.04
-                    ? 'bg-cyan-500/20 border border-cyan-400 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.3)]'
-                    : 'bg-slate-950 text-slate-500 hover:text-slate-300 border border-slate-800'
-                }`}
-              >
-                {Math.round(s * 100)}%
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* QUICK UTILITY DOCK: Shop, How to play, What's New */}
+      <div className="w-full max-w-xl mb-3.5 grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <button
+          onClick={onOpenShop}
+          className="p-3 rounded-xl bg-gradient-to-b from-amber-950/70 to-slate-900 border border-amber-500/50 hover:border-amber-400 text-amber-300 font-orbitron font-bold text-xs flex flex-col items-center justify-center text-center shadow-[0_0_15px_rgba(245,158,11,0.2)] transition-all cursor-pointer transform hover:-translate-y-0.5"
+        >
+          <ShoppingBag className="w-4 h-4 text-amber-400 mb-1" />
+          <span>{lang === 'ru' ? 'МАГАЗИН & АНГАР' : 'SHOP & HANGAR'}</span>
+          <span className="text-[9px] font-mono text-amber-400/70">{coins} 🪙</span>
+        </button>
 
-      {/* Active Public Rooms Explorer - Compact */}
-      <div className="w-full max-w-md bg-slate-900/70 border border-slate-800 rounded-xl p-3 backdrop-blur-sm">
-        <div className="flex items-center justify-between mb-2 text-[10px] uppercase font-orbitron tracking-wider text-slate-400">
-          <div className="flex items-center space-x-1.5">
-            <Users className="w-3.5 h-3.5 text-cyan-400" />
+        <button
+          onClick={onOpenHelp}
+          className="p-3 rounded-xl bg-gradient-to-b from-cyan-950/70 to-slate-900 border border-cyan-500/50 hover:border-cyan-400 text-cyan-300 font-orbitron font-bold text-xs flex flex-col items-center justify-center text-center shadow-[0_0_15px_rgba(6,182,212,0.2)] transition-all cursor-pointer transform hover:-translate-y-0.5"
+        >
+          <HelpCircle className="w-4 h-4 text-cyan-400 mb-1" />
+          <span>{lang === 'ru' ? 'КАК СЫГРАТЬ С ДРУГОМ' : 'HOW TO PLAY'}</span>
+          <span className="text-[9px] font-mono text-cyan-400/70">{lang === 'ru' ? 'Инструкция' : 'Quick Guide'}</span>
+        </button>
+
+        <button
+          onClick={onOpenWhatsNew}
+          className="p-3 rounded-xl bg-gradient-to-b from-purple-950/70 to-slate-900 border border-pink-500/50 hover:border-pink-400 text-pink-300 font-orbitron font-bold text-xs flex flex-col items-center justify-center text-center shadow-[0_0_15px_rgba(236,72,153,0.2)] transition-all cursor-pointer transform hover:-translate-y-0.5 col-span-2 sm:col-span-1"
+        >
+          <Sparkles className="w-4 h-4 text-pink-400 mb-1" />
+          <span>{lang === 'ru' ? 'ЧТО НОВОГО? 0.9' : "WHAT'S NEW 0.9"}</span>
+          <span className="text-[9px] font-mono text-pink-400/70">Remake Beta</span>
+        </button>
+      </div>
+
+      {/* ACTIVE PUBLIC ROOMS EXPLORER */}
+      <div className="w-full max-w-xl bg-slate-900/80 border border-slate-800 rounded-2xl p-3.5 backdrop-blur-sm shadow-md">
+        <div className="flex items-center justify-between mb-2.5 text-[11px] uppercase font-orbitron tracking-wider text-slate-400">
+          <div className="flex items-center space-x-2">
+            <Users className="w-4 h-4 text-cyan-400" />
             <span>{t.activeRooms} ({publicRooms.length})</span>
           </div>
           <button
             onClick={fetchRooms}
             disabled={loadingRooms}
-            className="text-slate-500 hover:text-cyan-400 p-0.5 rounded transition-colors cursor-pointer"
-            title="Refresh room list"
+            className="text-slate-400 hover:text-cyan-400 p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Обновить список комнат"
           >
-            <RefreshCw className={`w-3 h-3 ${loadingRooms ? 'animate-spin text-cyan-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loadingRooms ? 'animate-spin text-cyan-400' : ''}`} />
           </button>
         </div>
 
         {publicRooms.length === 0 ? (
-          <div className="text-center py-2 text-[11px] text-slate-500 font-mono">
+          <div className="text-center py-3 text-xs text-slate-500 font-mono">
             {t.noActiveRooms}
           </div>
         ) : (
-          <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-36 overflow-y-auto pr-1">
             {publicRooms.map((r) => (
               <div
                 key={r.code}
-                className="flex items-center justify-between p-2 rounded-lg bg-slate-950/60 border border-slate-800/80 hover:border-cyan-500/40 transition-colors"
+                className="flex items-center justify-between p-2.5 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-cyan-500/50 transition-colors"
               >
                 <div>
-                  <div className="font-orbitron font-bold text-cyan-300 text-xs tracking-wider">
+                  <div className="font-orbitron font-bold text-cyan-300 text-xs sm:text-sm tracking-wider">
                     {r.code}
                   </div>
-                  <div className="text-[9px] font-mono text-slate-400">
+                  <div className="text-[10px] font-mono text-slate-400">
                     STATUS: <span className="uppercase text-emerald-400">{r.status === 'playing' ? t.statusPlaying : t.statusWaiting}</span>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <span className="text-[11px] font-mono text-slate-300">
+                <div className="flex items-center space-x-2.5">
+                  <span className="text-xs font-mono text-slate-300">
                     {r.playersCount}/8
                   </span>
                   <button
                     onClick={() => onJoinRoom(r.code)}
                     disabled={r.status === 'playing' && r.playersCount >= 8}
-                    className="px-2.5 py-0.5 rounded-lg bg-cyan-600/30 hover:bg-cyan-600/50 border border-cyan-500/50 text-cyan-300 text-[11px] font-orbitron font-bold transition-colors cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-cyan-600/30 hover:bg-cyan-600/60 border border-cyan-500/60 text-cyan-300 text-xs font-orbitron font-bold transition-colors cursor-pointer"
                   >
                     {t.joinBtn}
                   </button>
