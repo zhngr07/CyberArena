@@ -159,6 +159,7 @@ export interface Player {
   isHost: boolean;
   isReady: boolean;
   isBot?: boolean;
+  disconnected?: boolean;
   ping: number;
   cosmetics?: PlayerCosmetics;
   team?: 'blue' | 'red';
@@ -429,6 +430,48 @@ export interface RoomState {
   bountyLeaderId?: string;
   bountyAmount?: number;
   boss?: BossState | null;
+  matchId?: string;
+  matchStartTime?: number;
+  isRanked?: boolean;
+}
+
+export type MatchStatus = 'completed' | 'draw' | 'aborted';
+
+export interface MatchParticipantSummary {
+  id: string;
+  name: string;
+  isBot: boolean;
+  team?: 'blue' | 'red';
+  score: number;
+  kills: number;
+  deaths: number;
+  damageDealt: number;
+  shotsFired: number;
+  shotsHit: number;
+  accuracy: number;
+  assists: number;
+  killStreak: number;
+  isWinner: boolean;
+  disconnected?: boolean;
+  ratingDelta?: number;
+  newRating?: number;
+}
+
+export interface MatchResult {
+  id: string;
+  roomCode: string;
+  mode: GameMode;
+  mapId: string;
+  status: MatchStatus;
+  isRanked?: boolean;
+  startTime: number;
+  endTime: number;
+  durationSeconds: number;
+  winnerId: string | null;
+  winnerName: string | null;
+  participants: MatchParticipantSummary[];
+  bossDefeated?: boolean;
+  bossDamageDealt?: number;
 }
 
 export interface PlayerScoreSummary {
@@ -534,7 +577,7 @@ export type ServerMessage =
   | { type: 'bounty_placed'; playerId: string; playerName: string; bounty: number }
   | { type: 'bounty_claimed'; killerName: string; victimName: string; bounty: number }
   | { type: 'event_alert'; event: DynamicEventState }
-  | { type: 'game_over'; scores: PlayerScoreSummary[]; winner: PlayerScoreSummary }
+  | { type: 'game_over'; scores: PlayerScoreSummary[]; winner: PlayerScoreSummary; matchResult?: MatchResult }
   | { type: 'player_disconnected'; playerId: string; name: string }
   | { type: 'player_reconnected'; playerId: string; name: string }
   | { type: 'error'; message: string }

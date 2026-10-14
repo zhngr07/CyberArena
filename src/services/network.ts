@@ -6,6 +6,7 @@ import {
   GameMode,
   KillEvent,
   MapObstacle,
+  MatchResult,
   NetworkStats,
   Player,
   PlayerCosmetics,
@@ -108,7 +109,7 @@ class NetworkClient {
   private onCountdownListeners: Set<Listener<number>> = new Set();
   private onGameStartListeners: Set<() => void> = new Set();
   private onKillListeners: Set<Listener<KillEvent>> = new Set();
-  private onGameOverListeners: Set<Listener<{ scores: PlayerScoreSummary[]; winner: PlayerScoreSummary }>> = new Set();
+  private onGameOverListeners: Set<Listener<{ scores: PlayerScoreSummary[]; winner: PlayerScoreSummary; matchResult?: MatchResult }>> = new Set();
   private onPerfectDashListeners: Set<Listener<{ playerId: string; bonusScore: number }>> = new Set();
   private onBountyPlacedListeners: Set<Listener<{ playerId: string; playerName: string; bounty: number }>> = new Set();
   private onBountyClaimedListeners: Set<Listener<{ killerName: string; victimName: string; bounty: number }>> = new Set();
@@ -527,7 +528,7 @@ class NetworkClient {
         break;
 
       case 'game_over':
-        this.onGameOverListeners.forEach((cb) => cb({ scores: msg.scores, winner: msg.winner }));
+        this.onGameOverListeners.forEach((cb) => cb({ scores: msg.scores, winner: msg.winner, matchResult: msg.matchResult }));
         break;
 
       case 'error':
@@ -801,7 +802,7 @@ class NetworkClient {
     return () => this.onKillListeners.delete(cb);
   }
 
-  public onGameOver(cb: Listener<{ scores: PlayerScoreSummary[]; winner: PlayerScoreSummary }>) {
+  public onGameOver(cb: Listener<{ scores: PlayerScoreSummary[]; winner: PlayerScoreSummary; matchResult?: MatchResult }>) {
     this.onGameOverListeners.add(cb);
     return () => this.onGameOverListeners.delete(cb);
   }

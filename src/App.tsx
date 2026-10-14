@@ -26,6 +26,7 @@ import {
   RoomState,
   BossState,
   GameMode,
+  MatchResult,
 } from './types/game.ts';
 import { Language } from './data/translations.ts';
 import { getEquippedCosmetics, getSavedCoins } from './data/shopItems.ts';
@@ -169,6 +170,7 @@ export default function App() {
   const [gameOverData, setGameOverData] = useState<{
     scores: PlayerScoreSummary[];
     winner: PlayerScoreSummary;
+    matchResult?: MatchResult;
   } | null>(null);
 
   // Keep player preferences in localStorage
@@ -523,6 +525,7 @@ export default function App() {
         <GameOverModal
           scores={gameOverData.scores}
           winner={gameOverData.winner}
+          matchResult={gameOverData.matchResult}
           localPlayerId={localPlayer?.id || ''}
           lang={lang}
           onPlayAgain={handlePlayAgain}

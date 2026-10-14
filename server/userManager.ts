@@ -59,6 +59,25 @@ export interface PublicPilotProfile {
   createdAt: number;
 }
 
+export interface LeaderboardEntry extends PublicPilotProfile {
+  rank: number;
+  globalRank: number;
+}
+
+export interface LeaderboardPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+
+export interface LeaderboardResponse {
+  pilots: LeaderboardEntry[];
+  pagination: LeaderboardPagination;
+}
+
 function computeRank(rating: number) {
   if (rating >= 2500) {
     return { rankTier: 'apex' as const, rankTitle: 'АБСОЛЮТ / APEX DOMINATOR', rankIcon: '⚡' };
@@ -85,17 +104,28 @@ function hashPassword(password: string): string {
 export class UserManager {
   private users: Map<string, StoredUser> = new Map(); // username.toLowerCase() -> StoredUser
   private tokens: Map<string, string> = new Map(); // token -> username
+  private processedMatchIds: Set<string> = new Set();
+  private customUsersFile?: string;
 
-  constructor() {
+  constructor(customUsersFile?: string, options?: { skipSeed?: boolean }) {
+    this.customUsersFile = customUsersFile;
     this.ensureDataDir();
     this.loadUsers();
-    this.seedDefaultPilotsIfEmpty();
+    this.loadProcessedMatches();
+    if (!options?.skipSeed) {
+      this.seedDefaultPilotsIfEmpty();
+    }
+  }
+
+  private getUsersFile(): string {
+    return this.customUsersFile || USERS_FILE;
   }
 
   private ensureDataDir() {
     try {
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
+      const dir = path.dirname(this.getUsersFile());
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
       }
     } catch (e) {
       console.error('Failed to create data dir', e);
@@ -104,8 +134,9 @@ export class UserManager {
 
   private loadUsers() {
     try {
-      if (fs.existsSync(USERS_FILE)) {
-        const raw = fs.readFileSync(USERS_FILE, 'utf-8');
+      const file = this.getUsersFile();
+      if (fs.existsSync(file)) {
+        const raw = fs.readFileSync(file, 'utf-8');
         const list: StoredUser[] = JSON.parse(raw);
         for (const u of list) {
           this.users.set(u.username.toLowerCase(), u);
@@ -116,120 +147,37 @@ export class UserManager {
     }
   }
 
+  private loadProcessedMatches() {
+    try {
+      const matchesFile = path.join(path.dirname(this.getUsersFile()), 'matches.json');
+      if (fs.existsSync(matchesFile)) {
+        const raw = fs.readFileSync(matchesFile, 'utf-8');
+        const list: Array<{ id: string }> = JSON.parse(raw);
+        for (const m of list) {
+          if (m && m.id) {
+            this.processedMatchIds.add(m.id);
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   private saveUsers() {
     try {
       this.ensureDataDir();
+      const file = this.getUsersFile();
       const list = Array.from(this.users.values());
-      fs.writeFileSync(USERS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+      fs.writeFileSync(file, JSON.stringify(list, null, 2), 'utf-8');
     } catch (e) {
       console.error('Failed to save users to file', e);
     }
   }
 
   private seedDefaultPilotsIfEmpty() {
-    if (this.users.size > 0) return;
-
-    const initialLegends: Array<Partial<StoredUser> & { username: string; rating: number }> = [
-      {
-        username: 'Apex_Viper',
-        rating: 2650,
-        matchesPlayed: 148,
-        wins: 112,
-        kills: 842,
-        deaths: 120,
-        highestScore: 3250,
-        bossRaidsDefeated: 24,
-        mvpCount: 45,
-        coins: 1850,
-        equippedCosmetics: { shipModel: 'dragon', hat: 'crown', trail: 'lightning', title: 'legend', color: '#f59e0b' },
-      },
-      {
-        username: 'Cyber_Phantom',
-        rating: 2310,
-        matchesPlayed: 110,
-        wins: 76,
-        kills: 590,
-        deaths: 140,
-        highestScore: 2800,
-        bossRaidsDefeated: 18,
-        mvpCount: 29,
-        coins: 1200,
-        equippedCosmetics: { shipModel: 'phantom', hat: 'visor', trail: 'matrix', title: 'untouchable', color: '#06b6d4' },
-      },
-      {
-        username: 'Nova_Destroyer',
-        rating: 1890,
-        matchesPlayed: 92,
-        wins: 54,
-        kills: 410,
-        deaths: 165,
-        highestScore: 2100,
-        bossRaidsDefeated: 12,
-        mvpCount: 19,
-        coins: 850,
-        equippedCosmetics: { shipModel: 'dreadnought', hat: 'horns', trail: 'fire', title: 'slayer', color: '#ef4444' },
-      },
-      {
-        username: 'Neon_Sniper',
-        rating: 1640,
-        matchesPlayed: 75,
-        wins: 41,
-        kills: 330,
-        deaths: 115,
-        highestScore: 1950,
-        bossRaidsDefeated: 9,
-        mvpCount: 14,
-        coins: 600,
-        equippedCosmetics: { shipModel: 'raven', hat: 'samurai', trail: 'rainbow', title: 'sniper', color: '#a855f7' },
-      },
-      {
-        username: 'Galactic_Pilot',
-        rating: 1250,
-        matchesPlayed: 45,
-        wins: 22,
-        kills: 180,
-        deaths: 95,
-        highestScore: 1450,
-        bossRaidsDefeated: 4,
-        mvpCount: 6,
-        coins: 450,
-        equippedCosmetics: { shipModel: 'phantom', hat: 'headset', trail: 'stars', title: 'rookie', color: '#10b981' },
-      },
-    ];
-
-    for (const leg of initialLegends) {
-      const user: StoredUser = {
-        id: 'legend_' + Math.random().toString(36).slice(2, 9),
-        username: leg.username,
-        passwordHash: hashPassword('pilot_legend_bot'),
-        rating: leg.rating,
-        coins: leg.coins || 500,
-        matchesPlayed: leg.matchesPlayed || 30,
-        wins: leg.wins || 15,
-        kills: leg.kills || 100,
-        deaths: leg.deaths || 50,
-        highestScore: leg.highestScore || 1000,
-        bossRaidsDefeated: leg.bossRaidsDefeated || 5,
-        mvpCount: leg.mvpCount || 5,
-        ownedCosmetics: {
-          shipModels: ['phantom', leg.equippedCosmetics?.shipModel || 'phantom'],
-          hats: ['none', leg.equippedCosmetics?.hat || 'none'],
-          trails: ['default', leg.equippedCosmetics?.trail || 'default'],
-          titles: ['rookie', leg.equippedCosmetics?.title || 'rookie'],
-        },
-        equippedCosmetics: leg.equippedCosmetics || {
-          shipModel: 'phantom',
-          hat: 'none',
-          trail: 'default',
-          title: 'rookie',
-          color: '#06b6d4',
-        },
-        createdAt: Date.now() - 30 * 24 * 3600 * 1000,
-        lastLoginAt: Date.now() - 3600 * 1000,
-      };
-      this.users.set(leg.username.toLowerCase(), user);
-    }
-    this.saveUsers();
+    // 0.9 Beta Remake: No fake bot accounts. Leaderboard displays only real registered pilots.
+    return;
   }
 
   public register(
@@ -350,44 +298,11 @@ export class UserManager {
     const user = this.getUserByToken(token);
     if (!user) return null;
 
-    if (typeof delta.coinsAdded === 'number') {
-      user.coins += delta.coinsAdded;
-    }
+    // Secure sync: Cosmetics and shop purchases can be synced.
+    // Match outcome stats (wins, kills, deaths, matchWon, bossDefeated)
+    // are strictly server-authoritative and applied via applyAuthoritativeMatchResult.
     if (typeof delta.coinsSpent === 'number') {
       user.coins = Math.max(0, user.coins - delta.coinsSpent);
-    }
-
-    if (delta.matchWon !== undefined) {
-      user.matchesPlayed++;
-      if (delta.matchWon) {
-        user.wins++;
-        user.rating = Math.round(user.rating + 35); // +35 RP for win
-      } else {
-        user.rating = Math.max(100, Math.round(user.rating - 15)); // -15 RP for loss
-      }
-    }
-
-    if (typeof delta.kills === 'number' && delta.kills > 0) {
-      user.kills += delta.kills;
-      user.rating += delta.kills * 4; // +4 RP per kill
-    }
-    if (typeof delta.deaths === 'number' && delta.deaths > 0) {
-      user.deaths += delta.deaths;
-    }
-
-    if (typeof delta.score === 'number') {
-      user.highestScore = Math.max(user.highestScore, delta.score);
-    }
-
-    if (delta.bossDefeated) {
-      user.bossRaidsDefeated = (user.bossRaidsDefeated || 0) + 1;
-      user.rating += 50; // +50 RP for boss defeat
-      user.coins += 250;
-    }
-
-    if (delta.isMvp) {
-      user.mvpCount = (user.mvpCount || 0) + 1;
-      user.rating += 25; // +25 RP for MVP
     }
 
     if (delta.ownedCosmetics) {
@@ -407,9 +322,137 @@ export class UserManager {
     return this.toPublicProfile(user);
   }
 
+  public applyAuthoritativeMatchResult(match: import('../src/types/game.ts').MatchResult): boolean {
+    if (!match || !match.id || !Array.isArray(match.participants)) return false;
+
+    // Strict idempotency: if match was already processed, ignore immediately
+    if (this.processedMatchIds.has(match.id)) {
+      return false;
+    }
+    this.processedMatchIds.add(match.id);
+
+    // Competitive rating rules (0.9.3):
+    // Ranked PvP is only FFA. Boss raid is PvE co-op (never ranked).
+    // Aborted matches are non-ranked / unfinished.
+    const isRankedPvP = match.isRanked !== false && match.mode === 'ffa' && match.status !== 'aborted';
+
+    let hasChanges = false;
+    for (const participant of match.participants) {
+      if (participant.isBot) continue;
+
+      const user = this.users.get(participant.name.trim().toLowerCase());
+      if (!user) continue;
+
+      hasChanges = true;
+      if (match.status !== 'aborted') {
+        user.matchesPlayed++;
+        if (match.status === 'completed' && participant.isWinner) {
+          user.wins++;
+          user.coins += 150;
+        } else {
+          user.coins += 30;
+        }
+      }
+
+      user.kills += participant.kills || 0;
+      user.deaths += participant.deaths || 0;
+      user.highestScore = Math.max(user.highestScore, participant.score || 0);
+
+      if (match.mode === 'boss_raid' && match.bossDefeated && participant.isWinner) {
+        user.bossRaidsDefeated = (user.bossRaidsDefeated || 0) + 1;
+        user.coins += 250;
+      }
+
+      // Rating updates
+      if (isRankedPvP) {
+        if (match.status === 'draw') {
+          // Ничья: 0
+          participant.ratingDelta = 0;
+          participant.newRating = user.rating;
+        } else if (match.status === 'completed') {
+          if (participant.isWinner) {
+            // Победа в рейтинговом матче: +25
+            user.rating += 25;
+            participant.ratingDelta = 25;
+            participant.newRating = user.rating;
+          } else {
+            // Поражение: -15. Минимальный рейтинг: 0.
+            const oldRating = user.rating;
+            user.rating = Math.max(0, user.rating - 15);
+            participant.ratingDelta = user.rating - oldRating;
+            participant.newRating = user.rating;
+          }
+        }
+      } else {
+        // Незавершённый или нерейтинговый матч не изменяет рейтинг
+        participant.ratingDelta = 0;
+        participant.newRating = user.rating;
+      }
+    }
+
+    if (hasChanges) {
+      this.saveUsers();
+    }
+    return true;
+  }
+
+  public getPilotGlobalRank(username: string): number | null {
+    if (!username) return null;
+    const key = username.trim().toLowerCase();
+    const all = Array.from(this.users.values());
+    all.sort((a, b) => b.rating - a.rating || b.wins - a.wins || b.kills - a.kills || a.createdAt - b.createdAt);
+    const index = all.findIndex((u) => u.username.toLowerCase() === key);
+    return index >= 0 ? index + 1 : null;
+  }
+
+  public getLeaderboard(options?: { page?: number; limit?: number; search?: string }): LeaderboardResponse {
+    const page = Math.max(1, options?.page || 1);
+    const limit = Math.max(1, Math.min(100, options?.limit || 20));
+    const search = options?.search ? options.search.trim().toLowerCase() : '';
+
+    const all = Array.from(this.users.values());
+    all.sort((a, b) => b.rating - a.rating || b.wins - a.wins || b.kills - a.kills || a.createdAt - b.createdAt);
+
+    // Compute absolute global rank for every user
+    const rankedAll = all.map((user, idx) => ({
+      user,
+      globalRank: idx + 1,
+    }));
+
+    const filtered = search
+      ? rankedAll.filter((item) => item.user.username.toLowerCase().includes(search))
+      : rankedAll;
+
+    const total = filtered.length;
+    const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+    const startIndex = (page - 1) * limit;
+    const paginated = filtered.slice(startIndex, startIndex + limit);
+
+    const pilots: LeaderboardEntry[] = paginated.map((item, index) => {
+      const profile = this.toPublicProfile(item.user);
+      return {
+        ...profile,
+        rank: startIndex + index + 1,
+        globalRank: item.globalRank,
+      };
+    });
+
+    return {
+      pilots,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1 && totalPages > 0,
+      },
+    };
+  }
+
   public getTopPilots(limit: number = 30): PublicPilotProfile[] {
     const all = Array.from(this.users.values());
-    all.sort((a, b) => b.rating - a.rating || b.wins - a.wins || b.kills - a.kills);
+    all.sort((a, b) => b.rating - a.rating || b.wins - a.wins || b.kills - a.kills || a.createdAt - b.createdAt);
     return all.slice(0, limit).map((u) => this.toPublicProfile(u));
   }
 

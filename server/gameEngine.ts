@@ -9,6 +9,9 @@ import {
   KillEvent,
   KillStreakTier,
   MapObstacle,
+  MatchParticipantSummary,
+  MatchResult,
+  MatchStatus,
   Player,
   PlayerInput,
   PlayerScoreSummary,
@@ -81,8 +84,11 @@ export class GameEngine {
     delta?: boolean;
     boss?: BossState | null;
   }) => void;
+  public matchId: string;
+  public matchStartTime: number;
+  private isGameOver: boolean = false;
   private onKillCallback: (kill: KillEvent) => void;
-  private onGameOverCallback: (scores: PlayerScoreSummary[], winner: PlayerScoreSummary) => void;
+  private onGameOverCallback: (scores: PlayerScoreSummary[], winner: PlayerScoreSummary, matchResult: MatchResult) => void;
   private onPerfectDashCallback?: (playerId: string, bonusScore: number) => void;
   private onBountyPlacedCallback?: (playerId: string, playerName: string, bounty: number) => void;
   private onBountyClaimedCallback?: (killerName: string, victimName: string, bounty: number) => void;
@@ -105,7 +111,7 @@ export class GameEngine {
         boss?: BossState | null;
       }) => void;
       onKill: (kill: KillEvent) => void;
-      onGameOver: (scores: PlayerScoreSummary[], winner: PlayerScoreSummary) => void;
+      onGameOver: (scores: PlayerScoreSummary[], winner: PlayerScoreSummary, matchResult: MatchResult) => void;
       onPerfectDash?: (playerId: string, bonusScore: number) => void;
       onBountyPlaced?: (playerId: string, playerName: string, bounty: number) => void;
       onBountyClaimed?: (killerName: string, victimName: string, bounty: number) => void;
@@ -113,6 +119,10 @@ export class GameEngine {
     }
   ) {
     this.room = room;
+    this.matchId = room.matchId || `match_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    this.matchStartTime = room.matchStartTime || Date.now();
+    this.room.matchId = this.matchId;
+    this.room.matchStartTime = this.matchStartTime;
     this.map = MAPS[room.mapId] || (room.gameMode === 'boss_raid' ? MAPS['boss_arena'] : (MAPS['asteroid_field'] || MAPS['space_station']));
     this.onTickCallback = callbacks.onTick;
     this.onKillCallback = callbacks.onKill;
@@ -131,6 +141,10 @@ export class GameEngine {
     this.room.currentEvent = null;
     this.room.bountyLeaderId = undefined;
     this.room.bountyAmount = undefined;
+  }
+
+  public abortMatch(_reason: string = 'aborted') {
+    this.endGame('aborted');
   }
 
   public setPlayerInput(playerId: string, input: PlayerInput) {
@@ -2221,7 +2235,11 @@ export class GameEngine {
     this.endGame();
   }
 
-  private endGame() {
+  private endGame(statusOverride?: MatchStatus) {
+    if (this.isGameOver) {
+      return;
+    }
+    this.isGameOver = true;
     this.stop();
     this.room.status = 'game_over';
 
@@ -2231,30 +2249,164 @@ export class GameEngine {
         name: p.name,
         color: p.color,
         cosmetics: p.cosmetics,
-        score: p.score,
-        kills: p.kills,
-        deaths: p.deaths,
-        assists: p.assists,
-        damageDealt: Math.round(p.damageDealt),
+        score: p.score || 0,
+        kills: p.kills || 0,
+        deaths: p.deaths || 0,
+        assists: p.assists || 0,
+        damageDealt: Math.round(p.damageDealt || 0),
         accuracy: p.shotsFired > 0 ? Math.round((p.shotsHit / p.shotsFired) * 100) : 0,
-        killStreak: p.killStreak,
+        killStreak: p.killStreak || 0,
         bountyCollected: p.bountyCollected || 0,
         isBot: p.isBot,
       }))
       .sort((a, b) => b.score - a.score);
 
-    const winner = scores[0] || {
-      id: 'none',
-      name: 'None',
-      color: '#fff',
-      score: 0,
-      kills: 0,
-      deaths: 0,
-      damageDealt: 0,
-      accuracy: 0,
-      killStreak: 0,
+    let status: MatchStatus = statusOverride || 'completed';
+    let winner: PlayerScoreSummary;
+    let winnerId: string | null = null;
+    let winnerName: string | null = null;
+
+    if (statusOverride === 'aborted') {
+      status = 'aborted';
+      winner = {
+        id: 'none',
+        name: 'Матч отменён / Aborted',
+        color: '#94a3b8',
+        score: 0,
+        kills: 0,
+        deaths: 0,
+        damageDealt: 0,
+        accuracy: 0,
+        killStreak: 0,
+      };
+    } else if (this.room.gameMode === 'boss_raid') {
+      const isBossDead = Boolean(this.room.boss && this.room.boss.health <= 0);
+      if (isBossDead) {
+        status = 'completed';
+        winner = scores[0] || {
+          id: 'none',
+          name: 'Squad',
+          color: '#10b981',
+          score: 0,
+          kills: 0,
+          deaths: 0,
+          damageDealt: 0,
+          accuracy: 0,
+          killStreak: 0,
+        };
+        winnerId = winner.id;
+        winnerName = winner.name;
+      } else {
+        // Time ran out and boss is still alive: squad was defeated
+        status = 'completed';
+        winner = {
+          id: 'none',
+          name: 'Титан Пустоты победил / Boss Defeated Squad',
+          color: '#ef4444',
+          score: 0,
+          kills: 0,
+          deaths: 0,
+          damageDealt: 0,
+          accuracy: 0,
+          killStreak: 0,
+        };
+        winnerId = null;
+        winnerName = null;
+      }
+    } else {
+      // FFA, TDM, KOTH
+      if (scores.length === 0) {
+        status = 'aborted';
+        winner = {
+          id: 'none',
+          name: 'None',
+          color: '#fff',
+          score: 0,
+          kills: 0,
+          deaths: 0,
+          damageDealt: 0,
+          accuracy: 0,
+          killStreak: 0,
+        };
+      } else {
+        const topScore = scores[0].score;
+        const allZero = scores.every((s) => s.score === 0);
+        const isTie = scores.length >= 2 && scores[0].score === scores[1].score;
+
+        if (allZero || isTie) {
+          status = 'draw';
+          winner = {
+            id: 'none',
+            name: 'Ничья / Draw',
+            color: '#94a3b8',
+            score: topScore,
+            kills: scores[0].kills,
+            deaths: scores[0].deaths,
+            damageDealt: scores[0].damageDealt,
+            accuracy: scores[0].accuracy,
+            killStreak: scores[0].killStreak,
+          };
+          winnerId = null;
+          winnerName = null;
+        } else {
+          status = 'completed';
+          winner = scores[0];
+          winnerId = scores[0].id;
+          winnerName = scores[0].name;
+        }
+      }
+    }
+
+    this.room.winnerId = winnerId ? winnerId : undefined;
+
+    const participants: MatchParticipantSummary[] = Object.values(this.room.players).map((p) => {
+      const isWinner = status === 'completed' && winnerId !== null && p.id === winnerId;
+      return {
+        id: p.id,
+        name: p.name,
+        isBot: Boolean(p.isBot),
+        team: p.team,
+        score: p.score || 0,
+        kills: p.kills || 0,
+        deaths: p.deaths || 0,
+        damageDealt: Math.round(p.damageDealt || 0),
+        shotsFired: p.shotsFired || 0,
+        shotsHit: p.shotsHit || 0,
+        accuracy: p.shotsFired > 0 ? Math.round((p.shotsHit / p.shotsFired) * 100) : 0,
+        assists: p.assists || 0,
+        killStreak: p.killStreak || 0,
+        isWinner,
+        disconnected: Boolean(p.disconnected),
+      };
+    });
+
+    const now = Date.now();
+    const durationSeconds = Math.max(1, Math.round((now - this.matchStartTime) / 1000));
+
+    let totalBossDamage = 0;
+    if (this.room.boss && this.room.boss.damageContribution) {
+      totalBossDamage = Object.values(this.room.boss.damageContribution).reduce((acc, d) => acc + d, 0);
+    }
+
+    const isRanked = this.room.isRanked !== undefined ? this.room.isRanked : this.room.gameMode === 'ffa';
+
+    const matchResult: MatchResult = {
+      id: this.matchId,
+      roomCode: this.room.code,
+      mode: this.room.gameMode,
+      mapId: this.room.mapId,
+      status,
+      isRanked,
+      startTime: this.matchStartTime,
+      endTime: now,
+      durationSeconds,
+      winnerId,
+      winnerName,
+      participants,
+      bossDefeated: this.room.gameMode === 'boss_raid' ? Boolean(this.room.boss && this.room.boss.health <= 0) : undefined,
+      bossDamageDealt: this.room.gameMode === 'boss_raid' ? totalBossDamage : undefined,
     };
 
-    this.onGameOverCallback(scores, winner);
+    this.onGameOverCallback(scores, winner, matchResult);
   }
 }

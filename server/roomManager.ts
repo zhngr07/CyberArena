@@ -3,6 +3,7 @@ import {
   ClientMessage,
   GameMode,
   KillEvent,
+  MatchResult,
   Player,
   PlayerScoreSummary,
   RoomState,
@@ -13,6 +14,8 @@ import {
 import { GameEngine } from './gameEngine.ts';
 import { GAME_CONSTANTS } from '../src/data/weapons.ts';
 import { MAPS } from '../src/data/maps.ts';
+import { MatchManager } from './matchManager.ts';
+import { UserManager } from './userManager.ts';
 
 interface ClientConnection {
   ws: WebSocket;
@@ -31,12 +34,18 @@ export class RoomManager {
   private connections: Map<WebSocket, ClientConnection> = new Map();
   private reconnectTokens: Map<string, { playerId: string; roomCode: string; disconnectedAt: number }> = new Map();
   private countdownTimers: Map<string, NodeJS.Timeout> = new Map();
+  public matchManager: MatchManager;
+  private recordedMatchIds: Set<string> = new Set();
 
-  constructor() {
+  constructor(matchManager?: MatchManager, userManager?: UserManager) {
+    this.matchManager = matchManager || new MatchManager(userManager);
     // Periodically clean up stale rooms and disconnect tokens
-    setInterval(() => {
+    const cleanupTimer = setInterval(() => {
       this.cleanupStale();
     }, 15000);
+    if (typeof cleanupTimer.unref === 'function') {
+      cleanupTimer.unref();
+    }
   }
 
   private generateCode(): string {
@@ -612,6 +621,10 @@ export class RoomManager {
       room.matchDuration = 360;
     }
 
+    const matchId = `match_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    room.matchId = matchId;
+    room.matchStartTime = Date.now();
+
     // Create & run game engine
     const engine = new GameEngine(room, {
       onTick: (tickData) => {
@@ -632,8 +645,12 @@ export class RoomManager {
       onKill: (kill: KillEvent) => {
         this.broadcast(roomCode, { type: 'kill', kill });
       },
-      onGameOver: (scores: PlayerScoreSummary[], winner: PlayerScoreSummary) => {
-        this.broadcast(roomCode, { type: 'game_over', scores, winner });
+      onGameOver: (scores: PlayerScoreSummary[], winner: PlayerScoreSummary, matchResult: MatchResult) => {
+        if (!this.recordedMatchIds.has(matchResult.id)) {
+          this.recordedMatchIds.add(matchResult.id);
+          this.matchManager.recordMatch(matchResult);
+        }
+        this.broadcast(roomCode, { type: 'game_over', scores, winner, matchResult });
       },
       onPerfectDash: (playerId, bonusScore) => {
         this.broadcast(roomCode, { type: 'perfect_dash', playerId, bonusScore });
@@ -712,6 +729,8 @@ export class RoomManager {
     const player = room.players[conn.playerId];
     if (!player) return;
 
+    player.disconnected = true;
+
     // Save token with timestamp for 20s reconnect window
     this.reconnectTokens.set(conn.reconnectToken, {
       playerId: conn.playerId,
@@ -734,12 +753,27 @@ export class RoomManager {
       }
     }
 
+    // If in playing state and no connected human players remain in the room
+    if (room.status === 'playing') {
+      const remainingHumansConnected = Array.from(this.connections.values()).some(
+        (c) => c.roomCode === conn.roomCode && c.playerId !== conn.playerId
+      );
+      if (!remainingHumansConnected) {
+        // If all human players left, abort the match authoritatively (no false win)
+        const engine = this.engines.get(conn.roomCode);
+        if (engine) {
+          engine.abortMatch('all_players_left');
+          this.engines.delete(conn.roomCode);
+        }
+      }
+    }
+
     // If waiting in lobby and disconnected, remove after short delay if no reconnect
     setTimeout(() => {
       const isReconnected = Array.from(this.connections.values()).some(
         (c) => c.playerId === conn.playerId
       );
-      if (!isReconnected && room.players[conn.playerId]) {
+      if (!isReconnected && room.players[conn.playerId] && room.status === 'waiting') {
         delete room.players[conn.playerId];
         this.broadcast(conn.roomCode, { type: 'room_snapshot', room });
       }
@@ -754,7 +788,11 @@ export class RoomManager {
         // Room has no connected sockets
         const engine = this.engines.get(code);
         if (engine) {
-          engine.stop();
+          if (room.status === 'playing') {
+            engine.abortMatch('all_players_left');
+          } else {
+            engine.stop();
+          }
           this.engines.delete(code);
         }
         this.rooms.delete(code);
@@ -779,5 +817,13 @@ export class RoomManager {
       });
     }
     return list;
+  }
+
+  public getRoom(code: string): RoomState | undefined {
+    return this.rooms.get(code);
+  }
+
+  public getEngine(code: string): GameEngine | undefined {
+    return this.engines.get(code);
   }
 }

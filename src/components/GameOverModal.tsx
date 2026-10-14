@@ -1,15 +1,32 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import confetti from 'canvas-confetti';
-import { Trophy, RotateCcw, Home, Award, ShoppingBag, Coins, Shield, Zap } from 'lucide-react';
-import { PlayerScoreSummary } from '../types/game.ts';
+import {
+  Trophy,
+  RotateCcw,
+  Home,
+  Award,
+  ShoppingBag,
+  Coins,
+  Shield,
+  Zap,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Crosshair,
+  Skull,
+  Swords,
+  Flame,
+} from 'lucide-react';
+import { PlayerScoreSummary, MatchResult } from '../types/game.ts';
 import { soundManager } from '../services/audio.ts';
 import { Language, TRANSLATIONS } from '../data/translations.ts';
 import { addCoins } from '../data/shopItems.ts';
-import { authService } from '../services/auth.ts';
+import { authService, PilotProfile } from '../services/auth.ts';
 
 interface GameOverModalProps {
   scores: PlayerScoreSummary[];
   winner: PlayerScoreSummary;
+  matchResult?: MatchResult;
   localPlayerId: string;
   lang: Language;
   onPlayAgain: () => void;
@@ -20,22 +37,36 @@ interface GameOverModalProps {
 export const GameOverModal: React.FC<GameOverModalProps> = ({
   scores,
   winner,
+  matchResult,
   localPlayerId,
   lang,
   onPlayAgain,
   onReturnToMenu,
   onOpenShop,
 }) => {
-  const isWinner = winner && winner.id === localPlayerId;
   const t = TRANSLATIONS[lang];
   const [earnedCoins, setEarnedCoins] = useState<number>(0);
-  const [earnedRp, setEarnedRp] = useState<number>(0);
+  const [currentUser, setCurrentUser] = useState<PilotProfile | null>(authService.getCurrentUser());
+  const [animatedRating, setAnimatedRating] = useState<number | null>(null);
 
   const localScoreSummary = scores.find((p) => p.id === localPlayerId);
   const localRank = scores.findIndex((p) => p.id === localPlayerId);
 
+  // Authoritative match result parsing
+  const isDraw = matchResult?.status === 'draw';
+  const isAborted = matchResult?.status === 'aborted';
+  const isWinner = !isDraw && !isAborted && winner && winner.id === localPlayerId;
+  const isRankedMatch = matchResult ? matchResult.isRanked !== false && matchResult.mode === 'ffa' : true;
+
+  // Rating delta: +25 for win, -15 for loss, 0 for draw/unranked
+  const ratingDelta = !isRankedMatch || isAborted || isDraw ? 0 : isWinner ? 25 : -15;
+
+  const localParticipant = matchResult?.participants.find((p) => p.id === localPlayerId);
+  const damageDealt = localParticipant?.damageDealt ?? localScoreSummary?.damageDealt ?? 0;
+  const accuracy = localParticipant?.accuracy ?? localScoreSummary?.accuracy ?? 0;
+
   useEffect(() => {
-    // Calculate coin reward
+    // 1. Calculate coins reward
     let coinsReward = 30; // Base participation reward
     if (localRank === 0) coinsReward += 150; // #1 Winner bonus
     else if (localRank === 1) coinsReward += 80;
@@ -45,22 +76,36 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
       coinsReward += (localScoreSummary.kills || 0) * 20; // 20 coins per frag
     }
 
-    const rpReward = isWinner ? 35 : localRank === 1 ? 20 : localRank === 2 ? 12 : 6;
-    setEarnedRp(rpReward);
-
     setEarnedCoins(coinsReward);
     addCoins(coinsReward);
 
-    // Sync with persistent account system
-    authService.syncProgress({
-      coinsAdded: coinsReward,
-      matchWon: isWinner,
-      kills: localScoreSummary?.kills || 0,
-      deaths: localScoreSummary?.deaths || 0,
-      score: localScoreSummary?.score || 0,
-      isMvp: isWinner,
+    // 2. Refresh authoritative user profile from server
+    authService.fetchMe().then((freshUser) => {
+      if (freshUser) {
+        setCurrentUser(freshUser);
+        // Animate rating counter smoothly
+        const startRating = isRankedMatch ? freshUser.rating - ratingDelta : freshUser.rating;
+        const targetRating = freshUser.rating;
+        setAnimatedRating(startRating);
+
+        const startTime = performance.now();
+        const duration = 800; // ms
+
+        const step = (now: number) => {
+          const progress = Math.min(1, (now - startTime) / duration);
+          // Ease-out cubic
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const currentVal = Math.round(startRating + (targetRating - startRating) * eased);
+          setAnimatedRating(currentVal);
+          if (progress < 1) {
+            requestAnimationFrame(step);
+          }
+        };
+        requestAnimationFrame(step);
+      }
     }).catch(() => {});
 
+    // 3. Audio & celebratory effects
     if (isWinner) {
       soundManager.playVictory();
       confetti({
@@ -72,57 +117,144 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
     } else {
       soundManager.playCoin();
     }
-  }, [isWinner, localRank, localScoreSummary]);
+  }, [isWinner, localRank, localScoreSummary?.kills, ratingDelta, isRankedMatch]);
+
+  // Status banner styling & text
+  let bannerTitle = isWinner ? t.victoryAchieved : t.battleCompleted;
+  let bannerSubtitle = `${t.championLabel} ${winner.name} ${t.withScore} ${winner.score} ${t.pts}`;
+  let bannerBgClass = 'bg-gradient-to-b from-cyan-500/20 to-slate-900 border-cyan-500/30';
+  let bannerTitleClass = 'text-cyan-300';
+
+  if (isWinner) {
+    bannerTitle = 'ПОБЕДА В БОЮ';
+    bannerBgClass = 'bg-gradient-to-b from-amber-500/20 to-slate-900 border-amber-500/30';
+    bannerTitleClass = 'text-amber-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.6)]';
+  } else if (isDraw) {
+    bannerTitle = 'БОЕВАЯ НИЧЬЯ';
+    bannerSubtitle = 'Пилоты набрали равное количество очков в секторе';
+    bannerBgClass = 'bg-gradient-to-b from-slate-500/20 to-slate-900 border-slate-500/30';
+    bannerTitleClass = 'text-slate-200';
+  } else if (isAborted) {
+    bannerTitle = 'МАТЧ ПРЕРВАН';
+    bannerSubtitle = 'Пилоты покинули арену до истечения таймера';
+    bannerBgClass = 'bg-gradient-to-b from-rose-500/20 to-slate-900 border-rose-500/30';
+    bannerTitleClass = 'text-rose-300';
+  } else {
+    bannerTitle = 'ПОРАЖЕНИЕ';
+    bannerBgClass = 'bg-gradient-to-b from-blue-900/30 to-slate-900 border-cyan-500/30';
+    bannerTitleClass = 'text-cyan-300';
+  }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-3 sm:p-4 select-none">
-      <div className="w-full max-w-2xl bg-slate-900 border border-cyan-500/40 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.25)] animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="game-over-title"
+      className="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in zoom-in-95 duration-200"
+    >
+      <div className="w-full max-w-2xl bg-slate-900 border border-cyan-500/40 rounded-2xl overflow-hidden shadow-[0_0_50px_rgba(6,182,212,0.25)] flex flex-col max-h-[92vh]">
         {/* Banner Header */}
-        <div
-          className={`px-5 py-5 sm:py-6 text-center border-b ${
-            isWinner
-              ? 'bg-gradient-to-b from-amber-500/20 to-slate-900 border-amber-500/30'
-              : 'bg-gradient-to-b from-cyan-500/20 to-slate-900 border-cyan-500/30'
-          }`}
-        >
+        <div className={`px-5 py-5 sm:py-6 text-center border-b ${bannerBgClass}`}>
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-950/80 border border-cyan-500/30 text-xs font-mono uppercase tracking-widest text-cyan-300 mb-2">
-            <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            <span>{t.matchConcluded}</span>
+            <Trophy className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />
+            <span>{isRankedMatch ? 'РЕЙТИНГОВЫЙ МАТЧ (RANKED FFA)' : 'КООПЕРАТИВНЫЙ БОЙ'}</span>
           </div>
 
-          <h2
-            className={`text-2xl sm:text-4xl font-orbitron font-black tracking-wider ${
-              isWinner ? 'text-amber-400 drop-shadow-[0_0_20px_rgba(245,158,11,0.6)]' : 'text-cyan-300'
-            }`}
-          >
-            {isWinner ? t.victoryAchieved : t.battleCompleted}
+          <h2 id="game-over-title" className={`text-2xl sm:text-4xl font-orbitron font-black tracking-wider ${bannerTitleClass}`}>
+            {bannerTitle}
           </h2>
 
           <p className="mt-1 text-xs sm:text-sm text-slate-300 font-mono">
-            {t.championLabel} <span className="text-pink-400 font-bold font-orbitron">{winner.name}</span> {t.withScore}{' '}
-            <span className="text-cyan-400 font-bold">{winner.score} {t.pts}</span>
+            {bannerSubtitle}
           </p>
 
-          {/* Rewards Row: Earned Coins & Rating RP */}
-          <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-amber-950/70 border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-              <Coins className="w-4 h-4 text-amber-400" />
-              <span className="text-xs font-orbitron font-bold text-amber-300 uppercase">
-                {t.coinsEarned} <strong className="text-amber-200 text-sm font-black">+{earnedCoins} 🪙</strong>
-              </span>
-            </div>
+          {/* Rating Delta & Coins Bar */}
+          <div className="mt-3.5 flex items-center justify-center gap-2.5 flex-wrap">
+            {/* Rating Delta Badge */}
+            {isRankedMatch ? (
+              <div
+                className={`inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl border shadow-md ${
+                  ratingDelta > 0
+                    ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+                    : ratingDelta < 0
+                    ? 'bg-rose-950/80 border-rose-500/50 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                    : 'bg-slate-950/80 border-slate-700 text-slate-300'
+                }`}
+                aria-live="polite"
+              >
+                {ratingDelta > 0 ? (
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                ) : ratingDelta < 0 ? (
+                  <TrendingDown className="w-4 h-4 text-rose-400" />
+                ) : (
+                  <Minus className="w-4 h-4 text-slate-400" />
+                )}
+                <span className="text-xs font-orbitron font-bold uppercase">
+                  Рейтинг:{' '}
+                  <strong className="text-sm font-black">
+                    {ratingDelta > 0 ? `+${ratingDelta}` : ratingDelta < 0 ? `${ratingDelta}` : '0'} RP
+                  </strong>
+                </span>
+                {animatedRating !== null && (
+                  <span className="text-[11px] font-mono text-slate-400 ml-1">
+                    ({animatedRating} RP)
+                  </span>
+                )}
+              </div>
+            ) : (
+              <div className="inline-flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-400 text-xs font-mono">
+                <Shield className="w-3.5 h-3.5 text-purple-400" />
+                <span>Нерейтинговый бой · 0 RP</span>
+              </div>
+            )}
 
-            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-cyan-950/70 border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
-              <Shield className="w-4 h-4 text-cyan-400" />
-              <span className="text-xs font-orbitron font-bold text-cyan-300 uppercase">
-                {lang === 'ru' ? 'Рейтинг' : 'Rating'} <strong className="text-cyan-200 text-sm font-black">+{earnedRp} RP</strong>
+            {/* Coins Earned */}
+            <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-xl bg-amber-950/80 border border-amber-500/50 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]">
+              <Coins className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-orbitron font-bold uppercase">
+                {t.coinsEarned} <strong className="text-sm font-black text-amber-200">+{earnedCoins} 🪙</strong>
               </span>
             </div>
           </div>
         </div>
 
+        {/* Personal Combat Highlights Cards */}
+        <div className="px-4 sm:px-6 pt-4 pb-2 bg-slate-950/40 border-b border-slate-800/80">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl text-center">
+              <div className="text-[10px] font-orbitron text-slate-400 uppercase">Очки</div>
+              <div className="text-base font-orbitron font-bold text-cyan-400 mt-0.5">
+                {localScoreSummary?.score || 0}
+              </div>
+            </div>
+
+            <div className="bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl text-center">
+              <div className="text-[10px] font-orbitron text-slate-400 uppercase">Фраги / Смерти</div>
+              <div className="text-base font-orbitron font-bold text-white mt-0.5">
+                <span className="text-emerald-400">{localScoreSummary?.kills || 0}</span>
+                <span className="text-slate-500 mx-1">/</span>
+                <span className="text-rose-400">{localScoreSummary?.deaths || 0}</span>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl text-center">
+              <div className="text-[10px] font-orbitron text-slate-400 uppercase">Урон</div>
+              <div className="text-base font-orbitron font-bold text-amber-300 mt-0.5">
+                {damageDealt}
+              </div>
+            </div>
+
+            <div className="bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl text-center">
+              <div className="text-[10px] font-orbitron text-slate-400 uppercase">Точность</div>
+              <div className="text-base font-orbitron font-bold text-pink-400 mt-0.5">
+                {accuracy}%
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Scoreboard Table */}
-        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 touch-pan-y">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -132,12 +264,17 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                   <th className="pb-2.5 text-right">{t.scoreHeader}</th>
                   <th className="pb-2.5 text-right">{t.killsHeader}</th>
                   <th className="pb-2.5 text-right">{t.deathsHeader}</th>
+                  <th className="pb-2.5 text-right hidden xs:table-cell">Урон</th>
                   <th className="pb-2.5 text-right hidden xs:table-cell">{t.accuracyHeader}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
                 {scores.map((p, idx) => {
                   const isSelf = p.id === localPlayerId;
+                  const part = matchResult?.participants.find((m) => m.id === p.id);
+                  const pDamage = part?.damageDealt ?? p.damageDealt ?? 0;
+                  const pAccuracy = part?.accuracy ?? p.accuracy ?? 0;
+
                   return (
                     <tr
                       key={p.id ? `score-${p.id}` : `score-idx-${idx}`}
@@ -159,12 +296,12 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                           className="w-3 h-3 rounded-full flex-shrink-0 shadow-sm"
                           style={{ backgroundColor: p.color }}
                         />
-                        <span className="font-orbitron font-bold truncate max-w-[100px] sm:max-w-[160px]">
+                        <span className="font-orbitron font-bold truncate max-w-[90px] sm:max-w-[150px]">
                           {p.name}
                         </span>
                         {isSelf && (
                           <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-900/60 text-cyan-300 border border-cyan-700">
-                            YOU
+                            ВЫ
                           </span>
                         )}
                         {p.isBot && (
@@ -176,7 +313,8 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
                       <td className="py-2.5 text-right font-bold text-cyan-400">{p.score}</td>
                       <td className="py-2.5 text-right text-emerald-400">{p.kills}</td>
                       <td className="py-2.5 text-right text-rose-400">{p.deaths}</td>
-                      <td className="py-2.5 text-right text-slate-400 hidden xs:table-cell">{p.accuracy}%</td>
+                      <td className="py-2.5 text-right text-amber-300 hidden xs:table-cell">{pDamage}</td>
+                      <td className="py-2.5 text-right text-slate-400 hidden xs:table-cell">{pAccuracy}%</td>
                     </tr>
                   );
                 })}
@@ -190,14 +328,14 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={onReturnToMenu}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white font-orbitron text-xs font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white font-orbitron text-xs font-bold flex items-center justify-center space-x-1.5 focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none transition-all cursor-pointer"
             >
               <Home className="w-4 h-4" />
               <span>{t.mainMenuBtn}</span>
             </button>
             <button
               onClick={onOpenShop}
-              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-amber-950/70 hover:bg-amber-900/70 border border-amber-500/40 text-amber-300 font-orbitron text-xs font-bold flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-amber-950/70 hover:bg-amber-900/70 border border-amber-500/40 text-amber-300 font-orbitron text-xs font-bold flex items-center justify-center space-x-1.5 focus-visible:ring-2 focus-visible:ring-amber-400 focus-visible:outline-none transition-all cursor-pointer"
             >
               <ShoppingBag className="w-4 h-4 text-amber-400" />
               <span>{t.visitShopBtn}</span>
@@ -206,7 +344,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
 
           <button
             onClick={onPlayAgain}
-            className="w-full sm:w-auto px-7 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-orbitron font-extrabold text-xs sm:text-sm tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all cursor-pointer"
+            className="w-full sm:w-auto px-7 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-orbitron font-extrabold text-xs sm:text-sm tracking-wider flex items-center justify-center space-x-2 shadow-[0_0_20px_rgba(6,182,212,0.4)] focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:outline-none transition-all cursor-pointer"
           >
             <RotateCcw className="w-4 h-4 text-slate-950" />
             <span>{t.playAgainBtn}</span>

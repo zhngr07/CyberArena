@@ -182,13 +182,26 @@ if (data.success && data.user) {
   }
 
   public async getTopPilots(): Promise<PilotProfile[]> {
-    try {
-      const res = await fetch(`${API_URL}/api/leaderboard/pilots`);
-      const data = await res.json();
-      return data.pilots || [];
-    } catch {
-      return [];
+    const res = await fetch(`${API_URL}/api/leaderboard/pilots`);
+    if (!res.ok) {
+      throw new Error(`Ошибка загрузки рейтинга (${res.status})`);
     }
+    const data = await res.json();
+    return data.pilots || [];
+  }
+
+  public async getPlayerStats(username: string): Promise<PlayerAggregatedStats | null> {
+    try {
+      const res = await fetch(`${API_URL}/api/stats/player/${encodeURIComponent(username)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (data.success && data.stats) {
+        return data.stats;
+      }
+    } catch {
+      // transient network error
+    }
+    return null;
   }
 
   private persistUser(u: PilotProfile) {
@@ -199,6 +212,24 @@ if (data.success && data.user) {
       // ignore
     }
   }
+}
+
+export interface PlayerAggregatedStats {
+  playerName: string;
+  matchesPlayed: number;
+  wins: number;
+  draws: number;
+  losses: number;
+  kills: number;
+  deaths: number;
+  damageDealt: number;
+  shotsFired: number;
+  shotsHit: number;
+  accuracy: number;
+  kd: string;
+  winRate: string;
+  highestScore: number;
+  bossRaidsDefeated: number;
 }
 
 export const authService = new AuthService();
